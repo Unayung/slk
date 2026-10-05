@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"io/fs"
 	"log"
 	"maps"
 	"mime"
@@ -498,6 +499,9 @@ type App struct {
 	// settings persists the theme choice and sidebar width. Nil until wired.
 	settings       core.SettingsService
 	themeOverrides core.Theme
+	// themesFS is the custom themes directory, polled for changes so an
+	// edited theme file takes effect without a restart. Nil disables it.
+	themesFS fs.FS
 
 	// presence owns per-workspace presence/DND cache, the DND-tick
 	// guard, and the custom-snooze numeric input buffer. See
@@ -872,8 +876,12 @@ func (a *App) defaultHelpHint() string {
 }
 
 func (a *App) Init() tea.Cmd {
+	var cmds []tea.Cmd
+	if a.themesFS != nil {
+		cmds = append(cmds, themeWatchTick())
+	}
 	if a.bootstrap.IsLoading() {
-		return tea.Batch(
+		cmds = append(cmds,
 			tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg {
 				return SpinnerTickMsg{}
 			}),
@@ -882,7 +890,7 @@ func (a *App) Init() tea.Cmd {
 			}),
 		)
 	}
-	return nil
+	return tea.Batch(cmds...)
 }
 
 // Update is the bubbletea entry point: the reducer chain in update,
@@ -973,6 +981,7 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		reduceUserProfile,
 		reduceIO,
 		reduceMouse,
+		reduceThemeWatch,
 	); handled {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
@@ -3303,6 +3312,22 @@ func (a *App) SetPresenceService(s core.PresenceService) {
 // SetThemeOverrides stores the config theme overrides for applying on switch.
 func (a *App) SetThemeOverrides(overrides core.Theme) {
 	a.themeOverrides = overrides
+}
+
+// SetThemesFS enables hot reload of the custom themes in fsys (the
+// themes directory).
+func (a *App) SetThemesFS(fsys fs.FS) {
+	a.themesFS = fsys
+}
+
+// refreshThemedViews rebuilds everything that caches theme colors. Call
+// after styles.Apply.
+func (a *App) refreshThemedViews() {
+	a.invalidateAllWinModelCaches()
+	a.threadPanel.InvalidateCache()
+	a.sidebar.InvalidateCache()
+	a.compose.RefreshStyles()
+	a.threadCompose.RefreshStyles()
 }
 
 // SetTypingEnabled controls whether typing indicators are shown and sent.

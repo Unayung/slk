@@ -558,6 +558,7 @@ func run() error {
 	for _, it := range wsItems {
 		railTeamIDs = append(railTeamIDs, it.ID)
 	}
+	app.SetThemesFS(os.DirFS(themesDir))
 	applyUISettings(app, uiSettings{
 		TimestampFormat:  tsFormat,
 		TypingIndicators: cfg.Animations.TypingIndicators,

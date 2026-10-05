@@ -521,6 +521,7 @@ func LoadCustomThemes(fsys fs.FS) {
 		return // directory doesn't exist or can't be read — silently skip
 	}
 
+	customFingerprint = customThemesFingerprint(fsys)
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".toml") {
 			continue

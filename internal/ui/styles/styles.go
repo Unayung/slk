@@ -275,6 +275,7 @@ func Version() int64 { return version }
 // then rebuilds all composed styles.
 func Apply(themeName string, overrides core.Theme) {
 	version++
+	activeName, activeOverrides = themeName, overrides
 	colors := lookupTheme(themeName)
 
 	Primary = lipgloss.Color(colors.Primary)
