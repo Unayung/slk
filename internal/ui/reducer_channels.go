@@ -43,8 +43,8 @@
 //
 // Helpers (cancelEdit, CloseThread, clearSelections, SetChannels,
 // SetChannelMembership, notifyReadStateChanged, applyChannelMarkEcho,
-// uploadToastCmd, userNameFor, nowFormatted) stay on App; the
-// reducer calls them via `a`.
+// userNameFor, nowFormatted) stay on App; the reducer calls them via
+// `a`. The upload-in-progress toast goes through toastWithClear.
 //
 // Inbound image/avatar arms (imgrender.ImageReadyMsg,
 // imgrender.ImageFailedMsg, messages.AvatarReadyMsg) are NOT here:
@@ -68,6 +68,7 @@ var reduceChannels reducerFunc = func(a *App, msg tea.Msg) (tea.Cmd, bool) {
 	switch m := msg.(type) {
 	case ChannelSelectedMsg:
 		cmd, fetchFired := reduceChannelSelected(a, m)
+		cmd = tea.Batch(cmd, a.closeOffscreenActionPrompt())
 		// Permalink completion. !fetchFired means no MessagesLoadedMsg
 		// is coming (tier-1 fresh cache, or the upload-guard early
 		// return), so complete authoritatively now — otherwise the
@@ -324,7 +325,7 @@ func (a *App) retargetActiveChannel(id, name, chType string) {
 // flag.
 func reduceChannelSelected(a *App, m ChannelSelectedMsg) (tea.Cmd, bool) {
 	if a.compose.Uploading() || a.threadCompose.Uploading() {
-		return a.uploadToastCmd("Upload in progress", 2*time.Second), false
+		return toastWithClear(a, "Upload in progress", 2*time.Second), false
 	}
 	// Perf instrumentation: wall-clock the synchronous portion of the
 	// channel-switch reducer. This covers everything up to and including

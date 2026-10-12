@@ -307,7 +307,7 @@ func reduceWorkspaceReady(a *App, m WorkspaceReadyMsg) tea.Cmd {
 // data, restores last-viewed channel).
 func reduceWorkspaceSwitched(a *App, m WorkspaceSwitchedMsg) tea.Cmd {
 	if a.compose.Uploading() || a.threadCompose.Uploading() {
-		return a.uploadToastCmd("Upload in progress", 2*time.Second)
+		return toastWithClear(a, "Upload in progress", 2*time.Second)
 	}
 	if a.userProfile.IsVisible() {
 		a.userProfile.Close()
@@ -363,6 +363,7 @@ func reduceWorkspaceSwitched(a *App, m WorkspaceSwitchedMsg) tea.Cmd {
 	// the queued ChannelSelectedMsg below paints it via the
 	// three-tier dispatch. For empty workspaces (no Channels) the
 	// pane's empty state is confirmed in the else branch below.
+	a.resetActionPrompts()
 	a.SetMode(ModeNormal)
 	a.compose.Blur()
 	a.sidebar.SetSectionsProvider(m.SectionsProvider)
