@@ -181,6 +181,7 @@ scrollbars, date formatting, case folding, or ID formatting: it already exists.
 | Theme colors and styles | `ui/styles` (`Username`, `SelectionStyle`, `SearchHighlightStyle`, `MentionBadgeStyle`, `UserColor`) |
 | Change the theme inside the App | `App.applyTheme(name)` (`internal/ui/theme.go`): applies it, invalidates render caches and pushes fresh styles to components that snapshot them. A component that holds a style snapshot (anything in `internal/bubbles`) gets its push added there, not at each call site. `entrylist` is the exception: its owners (the channel and thread panes) call `SetStyles` at the top of every `View`, so `applyTheme` only invalidates for them. `styles.CurrentTheme()` names the applied one |
 | Status-bar toast that clears itself | `toastWithClear(a, text, d)` (`internal/ui/reducer_io.go`); `toastUntilReplaced(a, text)` only for a toast a later one replaces on purpose (upload progress). Set toasts on the Update goroutine, never inside a `tea.Cmd`; `statusbar.ToastSeq()` identifies the toast showing, so a clear tick leaves a newer toast alone. `TestToastsGoThroughToastSetters` fails on a direct `statusbar.SetToast` with text |
+| Set or clear the `:` prompt | `(*App).setCmdline(line)` / `(*App).clearCmdline()` (`internal/ui/mode_command.go`), which keep `a.cmdline`, the Tab-completion cycle and the status bar's `SetCommandLine` / `SetCommandCandidates` in step; do not call those status-bar setters for the prompt directly |
 | Window tree geometry | `ui/wintree` |
 | Sidebar selection across item/filter reorders | Capture `sidebar.Model.currentCursorKey()` **before** mutation, then `rebuildNavWithCursor`; `rebuildNavPreserveCursor` is only safe while old nav indices still identify the same items |
 | Modal geometry / row hit-testing | `chrome.Boxed`, `chrome.Clickable` (list rows; declared in `internal/bubbles/chrome`, asserted by each dialog package) and `pointClickable` (a single glyph, e.g. the profile dialog's 📋; `internal/ui/reducer_modal_click.go`) |
@@ -279,6 +280,7 @@ greppable by name; no line numbers, because these files move.
 | Compare a request this repo builds with a scrubbed web-client capture (`{method, form, response}` JSON in `testdata/`) | `capturedForm(t, name)` (the capture's form minus `token` and the `_x_*` envelope) and `assertFormMatchesCapture(t, got, name)` (same fields and values, nothing extra; `client_token` checked for shape) (`internal/slack/command_test.go`, `package slackclient`) |
 | Load a config from a TOML string | `loadConfigString(t, body)` (`internal/config/config_test.go`, `package config`) |
 | Press Tab or Shift+Tab at the `:` prompt; check the buffer and its status-bar mirror together; is no Tab cycle in progress? | `pressTab(a, shift)`, `assertPrompt(t, a, want)`, `cmdCompletionZero(c)` (`internal/ui/mode_command_test.go`) |
+| What the status bar draws after the `:` prompt (the completion list) | `afterPrompt(plain, line)` (`internal/ui/mode_command_test.go`) |
 
 ### Known duplication — do not add to it
 

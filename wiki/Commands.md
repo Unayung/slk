@@ -15,7 +15,8 @@ slk for the keybindings overlay.
 Press `:` in Normal mode. A `:` prompt opens in the status bar. Type the
 command and press `Enter` to run it. `Esc` cancels, and so does `Backspace`
 on an empty prompt. `Tab` completes the command name; press it again for the
-next match, or `Shift+Tab` for the previous one.
+next match, or `Shift+Tab` for the previous one. The matches are listed in
+the status bar beside the prompt, with the current one highlighted.
 
 | Command | Same as | What it does |
 |---|---|---|
