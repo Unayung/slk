@@ -278,6 +278,7 @@ greppable by name; no line numbers, because these files move.
 | The draft of a conversation in T1, read by switching the composer to it (changes the composer's draft context) | `draftIn(a, channelID)` (`internal/ui/slash_builtins_test.go`) |
 | Compare a request this repo builds with a scrubbed web-client capture (`{method, form, response}` JSON in `testdata/`) | `capturedForm(t, name)` (the capture's form minus `token` and the `_x_*` envelope) and `assertFormMatchesCapture(t, got, name)` (same fields and values, nothing extra; `client_token` checked for shape) (`internal/slack/command_test.go`, `package slackclient`) |
 | Load a config from a TOML string | `loadConfigString(t, body)` (`internal/config/config_test.go`, `package config`) |
+| Press Tab or Shift+Tab at the `:` prompt; check the buffer and its status-bar mirror together; is no Tab cycle in progress? | `pressTab(a, shift)`, `assertPrompt(t, a, want)`, `cmdCompletionZero(c)` (`internal/ui/mode_command_test.go`) |
 
 ### Known duplication — do not add to it
 

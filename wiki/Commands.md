@@ -14,7 +14,8 @@ slk for the keybindings overlay.
 
 Press `:` in Normal mode. A `:` prompt opens in the status bar. Type the
 command and press `Enter` to run it. `Esc` cancels, and so does `Backspace`
-on an empty prompt.
+on an empty prompt. `Tab` completes the command name; press it again for the
+next match, or `Shift+Tab` for the previous one.
 
 | Command | Same as | What it does |
 |---|---|---|
@@ -28,9 +29,9 @@ on an empty prompt.
 | `:q` | `Ctrl+w q` | Close the focused window. This never quits slk: on the last window it says "Cannot close last window" |
 | `:only` (or `:on`) | `Ctrl+w o` | Close every window except the focused one |
 
-Names must match exactly. There is no prefix matching, so `:act` is not
-`:activity`; the only short form is `:on`. Anything else says
-`Unknown command: <name>` in the status bar.
+Names must match exactly when you press `Enter`, so `:act` is not
+`:activity` (`Tab` completes it); the only short form is `:on`. Anything
+else says `Unknown command: <name>` in the status bar.
 
 Windows also have `Ctrl+w h` / `j` / `k` / `l` to move focus to the window
 in that direction and `Ctrl+w w` to cycle through them. A split says "Not
