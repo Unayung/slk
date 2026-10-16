@@ -53,6 +53,13 @@ pending IDs, filters out users without DM rows before reading SQLite and calls
 succeeds, without another reconnect or a startup UnresolvedDMs entry.
 No new Slack event or UI I/O is introduced.
 
+The DM sweep's per-user fallback also queues a repair, including for inactive
+workspaces with no UI sender.
+
+Startup hands the UI cloned channel/finder slices before starting the event
+owner. This fixes a pre-existing shared-array race, documented separately in
+`2026-10-10-workspace-ready-snapshot-design.md`.
+
 Tests cover parsing/membership/order/navigation, startup and reconnect recovery,
 failed/canceled profile retries, late names/app classification, finder/status
 repair without reconnect (edge and per-user, active and inactive workspaces),
