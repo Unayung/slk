@@ -28,6 +28,12 @@ func (a *App) afterConfirmPrompt(cmd tea.Cmd) tea.Cmd {
 			} else {
 				focus = a.compose.Focus()
 			}
+			// A read-only refusal that landed while the dialog was
+			// up disabled the channel composer without leaving insert
+			// mode (it wasn't in it): don't hand the user back into it.
+			if drop := a.dropInsertIfComposeDisabled(); drop != nil {
+				return tea.Batch(cmd, drop, a.tryOpenActionPrompt())
+			}
 			return tea.Batch(cmd, focus, a.tryOpenActionPrompt())
 		}
 		a.SetMode(ModeNormal)

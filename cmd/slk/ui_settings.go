@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/gammons/slk/internal/config"
 	"github.com/gammons/slk/internal/core"
 	"github.com/gammons/slk/internal/ui"
 	"github.com/gammons/slk/internal/ui/styles"
@@ -19,6 +20,22 @@ type uiSettings struct {
 	MouseWheelLines  int
 	ColoredUsernames bool
 	ThemeOverrides   core.Theme
+	// StayInInsertAfterSend is [compose] stay_in_insert_after_send,
+	// resolved (default on).
+	StayInInsertAfterSend bool
+}
+
+// uiSettingsFromConfig is run()'s uiSettings, read from the loaded config.
+func uiSettingsFromConfig(cfg config.Config) uiSettings {
+	return uiSettings{
+		TimestampFormat:       cfg.Appearance.TimestampFormat,
+		TypingIndicators:      cfg.Animations.TypingIndicators,
+		StaleAfter:            time.Duration(cfg.Sidebar.HideInactiveAfterDays) * 24 * time.Hour,
+		MouseWheelLines:       cfg.Appearance.MouseWheelLines,
+		ColoredUsernames:      cfg.Appearance.ColoredUsernames,
+		ThemeOverrides:        cfg.Theme,
+		StayInInsertAfterSend: cfg.EffectiveStayInInsertAfterSend(),
+	}
 }
 
 // applyUISettings installs s on app. The timestamp formatter feeds the
@@ -36,4 +53,5 @@ func applyUISettings(app *ui.App, s uiSettings) {
 	app.SetColoredUsernames(s.ColoredUsernames)
 	app.SetThemeItems(styles.ThemeNames())
 	app.SetThemeOverrides(s.ThemeOverrides)
+	app.SetStayInInsertAfterSend(s.StayInInsertAfterSend)
 }

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -62,6 +63,166 @@ func TestTypingDefersDialogWithOneToast(t *testing.T) {
 	}
 	if a.compose.Value() != "half a thought" {
 		t.Error("the draft must survive")
+	}
+}
+
+// A dialog deferred while typing opens once the composer is emptied and an
+// app shortcut leaves insert mode through it, as it does on Esc. A shortcut
+// that opens a modal of its own keeps the dialog waiting until that closes.
+func TestEmptyComposerShortcutOpensWaitingDialog(t *testing.T) {
+	a, _ := actionApp(t, nil)
+	a.SetMode(ModeInsert)
+	a.compose.SetValue("x")
+	arrive(t, a, mentionEphemeral(ephTS))
+	if a.confirmPrompt.IsVisible() {
+		t.Fatal("precondition: the dialog must wait while typing")
+	}
+
+	pressKey(t, a, keyMod('u', tea.ModCtrl)) // clear the composer
+	pressKey(t, a, keyMod('b', tea.ModCtrl)) // toggle sidebar: leaves insert
+	if !dialogShows(a, "[2] Dismiss") {
+		t.Errorf("leaving insert mode through a shortcut should open the waiting dialog; mode %v, %d queued", a.mode, len(a.actionQueue))
+	}
+}
+
+func TestEmptyComposerModalShortcutKeepsDialogWaiting(t *testing.T) {
+	a, _ := actionApp(t, nil)
+	a.SetMode(ModeInsert)
+	a.compose.SetValue("x")
+	arrive(t, a, mentionEphemeral(ephTS))
+
+	pressKey(t, a, keyMod('u', tea.ModCtrl))
+	pressKey(t, a, keyMod('p', tea.ModCtrl)) // channel finder
+	if a.mode != ModeChannelFinder {
+		t.Fatalf("mode = %v, want the channel finder on top", a.mode)
+	}
+	pressKey(t, a, keyCode(tea.KeyEscape))
+	if !dialogShows(a, "[2] Dismiss") {
+		t.Error("the dialog should open once the finder closes")
+	}
+}
+
+// ctrl+n opens its picker from the message it returns, so the waiting
+// dialog must not open ahead of it and end up drawn under the picker,
+// dead once the picker closes.
+func TestEmptyComposerNewMessageShortcutKeepsDialogWaiting(t *testing.T) {
+	a, _ := actionApp(t, nil)
+	a.SetMode(ModeInsert)
+	a.compose.SetValue("x")
+	arrive(t, a, mentionEphemeral(ephTS))
+
+	pressKey(t, a, keyMod('u', tea.ModCtrl))
+	pressKeyWorstOrder(t, a, keyMod('n', tea.ModCtrl)) // new-message picker
+	if a.mode != ModeNewMessage {
+		t.Fatalf("mode = %v, want the new-message picker on top", a.mode)
+	}
+	if a.confirmPrompt.IsVisible() {
+		t.Fatal("the dialog opened under the new-message picker")
+	}
+	pressKey(t, a, keyCode(tea.KeyEscape))
+	if a.mode != ModeConfirm || !dialogShows(a, "[2] Dismiss") {
+		t.Errorf("mode = %v; the dialog should open, and take keys, once the picker closes", a.mode)
+	}
+}
+
+// pressKeyWorstOrder is pressKey with the commands of every tea.Batch run
+// last first: the runtime starts them concurrently, so any order can
+// happen. tea.Sequence keeps its order. A test that depends on one
+// command's message landing before another's fails here unless the code
+// sequences them.
+func pressKeyWorstOrder(t *testing.T, a *App, k tea.KeyMsg) {
+	t.Helper()
+	_, cmd := a.Update(k)
+	for _, m := range drainWorstOrder(cmd) {
+		if m != nil {
+			a.Update(m)
+		}
+	}
+}
+
+func drainWorstOrder(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	msg := cmd()
+	cmds, ok := cmdListOf(msg)
+	if !ok {
+		return []tea.Msg{msg}
+	}
+	if _, batch := msg.(tea.BatchMsg); batch {
+		slices.Reverse(cmds)
+	}
+	var out []tea.Msg
+	for _, c := range cmds {
+		out = append(out, drainWorstOrder(c)...)
+	}
+	return out
+}
+
+// A waiting dialog belongs to a channel message. Ctrl+A from an empty
+// composer swaps the channel for the Activity view, so the dialog must
+// not open over it.
+func TestEmptyComposerActivityShortcutDropsChannelDialog(t *testing.T) {
+	a, _ := actionApp(t, nil)
+	a.SetMode(ModeInsert)
+	a.compose.SetValue("x")
+	arrive(t, a, mentionEphemeral(ephTS))
+
+	pressKey(t, a, keyMod('u', tea.ModCtrl))
+	pressKey(t, a, keyMod('a', tea.ModCtrl)) // Activity view
+	if a.view != ViewActivity {
+		t.Fatalf("view = %v, want the Activity view", a.view)
+	}
+	if a.confirmPrompt.IsVisible() || a.mode == ModeConfirm {
+		t.Errorf("mode = %v; the channel's dialog opened over the Activity view", a.mode)
+	}
+}
+
+// Ctrl+W from an empty composer only arms the window chord. A waiting
+// dialog must not open in between (it would disarm the chord): the split
+// runs, then the dialog opens.
+func TestEmptyComposerWindowChordRunsBeforeDialog(t *testing.T) {
+	a, _ := actionApp(t, nil)
+	a.SetMode(ModeInsert)
+	a.compose.SetValue("x")
+	arrive(t, a, mentionEphemeral(ephTS))
+
+	pressKey(t, a, keyMod('u', tea.ModCtrl))
+	pressKey(t, a, keyMod('w', tea.ModCtrl))
+	if a.confirmPrompt.IsVisible() || !a.pendingWinCmd {
+		t.Fatalf("mode = %v, chord armed = %v; the dialog must wait for the chord key", a.mode, a.pendingWinCmd)
+	}
+	pressKey(t, a, keyPress('s'))
+	if n := a.wins.Len(); n != 2 {
+		t.Errorf("windows = %d, want 2 after ctrl+w s", n)
+	}
+	if !dialogShows(a, "[2] Dismiss") {
+		t.Errorf("mode = %v; the waiting dialog should open once the chord has run", a.mode)
+	}
+}
+
+// A send that keeps insert mode opens a waiting dialog over the composer.
+// When Slack refuses that send as read-only while the dialog is up,
+// closing the dialog must not hand the user back to the now disabled
+// composer.
+func TestDialogCloseSkipsInsertIntoReadOnlyComposer(t *testing.T) {
+	a, _ := actionApp(t, nil)
+	a.SetStayInInsertAfterSend(true)
+	a.SetMode(ModeInsert)
+	a.compose.SetValue("hello")
+	arrive(t, a, mentionEphemeral(ephTS))
+
+	pressKey(t, a, keyCode(tea.KeyEnter))
+	if !dialogShows(a, "[2] Dismiss") || !a.shownPromptInsert {
+		t.Fatalf("precondition: the send should open the dialog over insert mode; mode %v", a.mode)
+	}
+	failSend(a, "C1", readOnlyReason)
+	if !a.composeDisabled {
+		t.Fatal("precondition: the refusal should disable the composer")
+	}
+	pressKey(t, a, keyCode(tea.KeyEscape))
+	if a.mode == ModeInsert {
+		t.Error("closing the dialog put the user back into a disabled composer")
 	}
 }
 

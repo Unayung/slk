@@ -630,3 +630,25 @@ func TestOpenConversation_RequestIDsAreNeverReused(t *testing.T) {
 		t.Errorf("a late result of request %d passes as current", reqs[0])
 	}
 }
+
+// With stay_in_insert_after_send on, /open from the thread composer keeps
+// insert mode, but the switch closes the thread: the channel composer must
+// take over, so what is typed next lands in it.
+func TestSlashOpen_FromThreadComposerKeepsTyping(t *testing.T) {
+	a, _, _, _ := openSlashApp(t)
+	a.SetStayInInsertAfterSend(true)
+	a.SetMode(ModeInsert)
+	showThread(t, a)
+	a.threadCompose.SetValue("/open #random")
+
+	for _, m := range deliveredMsgs[ChannelSelectedMsg](t, pressEnter(a)) {
+		a.Update(m)
+	}
+	if a.activeChannelID != "C2" || a.threadVisible {
+		t.Fatalf("active = %q, thread visible = %v; want #random with the thread closed", a.activeChannelID, a.threadVisible)
+	}
+	a.Update(keyPress('x'))
+	if a.mode != ModeInsert || a.compose.Value() != "x" {
+		t.Errorf("mode = %v, compose = %q; want INSERT with the typed x in the channel composer", a.mode, a.compose.Value())
+	}
+}

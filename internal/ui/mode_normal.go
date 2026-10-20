@@ -46,7 +46,18 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 	if a.pendingWinCmd {
 		a.pendingWinCmd = false
 		a.statusbar.SetHelpHint(a.defaultHelpHint())
-		return a.handleWindowChord(msg)
+		cmd := a.handleWindowChord(msg)
+		if len(a.actionQueue) == 0 {
+			return cmd
+		}
+		// A dialog that waited for the chord (see handleInsertMode's
+		// ctrl+w handoff) is reconsidered once the chord's command
+		// has run, whether the key completed or cancelled it.
+		recheck := func() tea.Msg { return actionPromptRecheckMsg{} }
+		if cmd == nil {
+			return recheck
+		}
+		return tea.Sequence(cmd, recheck)
 	}
 
 	// `g` pending sub-state: a second `g` completes the vim `gg` chord

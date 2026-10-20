@@ -62,6 +62,7 @@ quiet_hours = "22:00-08:00"   # planned
 
 [compose]
 editor = "nvim"   # Ctrl+E editor, used when $VISUAL and $EDITOR are unset
+stay_in_insert_after_send = true   # keep typing after Enter sends; false returns to normal mode like vim
 
 [cache]
 message_retention_days = 30

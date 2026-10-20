@@ -483,6 +483,41 @@ func TestConfig_MarksShowJumpOverlayFalseDistinguishableFromUnset(t *testing.T) 
 	}
 }
 
+// An unset [compose].stay_in_insert_after_send must leave the pointer
+// nil while resolving to on: the *bool exists so an explicit false is
+// distinguishable from a missing key.
+func TestConfig_ComposeStayInInsertDefault(t *testing.T) {
+	cfg := loadConfigString(t, "")
+	if cfg.Compose.StayInInsertAfterSend != nil {
+		t.Fatalf("stay_in_insert_after_send must be unset (nil) by default, got %v",
+			*cfg.Compose.StayInInsertAfterSend)
+	}
+	if !cfg.EffectiveStayInInsertAfterSend() {
+		t.Error("unset stay_in_insert_after_send must resolve to on")
+	}
+}
+
+func TestConfig_ComposeStayInInsertExplicit(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want bool
+	}{
+		{"on", "[compose]\nstay_in_insert_after_send = true\n", true},
+		{"off", "[compose]\nstay_in_insert_after_send = false\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := loadConfigString(t, tc.body)
+			if cfg.Compose.StayInInsertAfterSend == nil {
+				t.Fatal("an explicit stay_in_insert_after_send must set the pointer")
+			}
+			if got := cfg.EffectiveStayInInsertAfterSend(); got != tc.want {
+				t.Fatalf("EffectiveStayInInsertAfterSend = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestResolveThemeWorkspaceWins(t *testing.T) {
 	c := Config{
 		Appearance: Appearance{Theme: "dark"},
