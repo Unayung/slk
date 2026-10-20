@@ -31,6 +31,7 @@ the status bar beside the prompt, with the current one highlighted.
 | `:q` | `Ctrl+w q` | Close the focused window. This never quits slk: on the last window it says "Cannot close last window" |
 | `:only` (or `:on`) | `Ctrl+w o` | Close every window except the focused one |
 | `:help` | `?` | Open the keybindings overlay, which also lists every `:` command |
+| `:version` | `slk --version` from the shell, which also prints the build date | Show the running build's version and short commit in the status bar |
 
 Names must match exactly when you press `Enter`, so `:act` is not
 `:activity` (`Tab` completes it); the only short form is `:on`. Anything

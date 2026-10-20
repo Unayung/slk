@@ -65,6 +65,7 @@ type KeyMap struct {
 	NavForward          key.Binding
 	Help                key.Binding
 	HelpCommand         key.Binding
+	Version             key.Binding
 	SaveThread          key.Binding
 	RespondButtons      key.Binding
 	ListReactions       key.Binding
@@ -158,6 +159,7 @@ func DefaultKeyMap() KeyMap {
 		// command registry. Kept apart from Help so the status-bar
 		// hint, built from Help's key, stays "? for keybindings".
 		HelpCommand:    key.NewBinding(key.WithHelp(":help", "show keybindings and : commands")),
+		Version:        key.NewBinding(key.WithHelp(":version", "show the running build's version")),
 		SaveThread:     key.NewBinding(key.WithKeys("S"), key.WithHelp("S", "save thread")),
 		RespondButtons: key.NewBinding(key.WithKeys("b"), key.WithHelp("b", "respond to message buttons")),
 		ListReactions:  key.NewBinding(key.WithKeys("L"), key.WithHelp("L", "list reactions")),

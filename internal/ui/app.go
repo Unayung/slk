@@ -420,6 +420,10 @@ type App struct {
 	channelNames map[string]string
 	userGroups   map[string]string
 
+	// buildInfo is the build identity :version shows: version and short
+	// commit (version.Short). Set once at startup by main.
+	buildInfo string
+
 	// externalUsers tracks which user IDs are Slack Connect / shared-channel
 	// guests. Populated by main.go via SetExternalUsers as users are
 	// resolved. Read by SetUserNames when building the mention-picker User
@@ -3397,6 +3401,11 @@ func (a *App) SetTypingEnabled(enabled bool) {
 // help modal (e.g. the version + author credit). Pass "" to clear it.
 func (a *App) SetHelpFooter(s string) {
 	a.help.SetFooter(s)
+}
+
+// SetBuildInfo sets the build identity :version shows.
+func (a *App) SetBuildInfo(s string) {
+	a.buildInfo = s
 }
 
 // openHelpOverlay opens the keybindings overlay with entries derived

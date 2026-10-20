@@ -7,7 +7,7 @@
 // executeCommand parses a command line (without the leading ':')
 // and dispatches through the commands map — the designated
 // extension point for :commands (ws, marks, sp, vsp, q, only, activity,
-// huddle, help).
+// huddle, help, version).
 package ui
 
 import (
@@ -50,6 +50,18 @@ var commands = map[string]commandFunc{
 	"activity": cmdActivity,
 	"huddle":   cmdHuddle,
 	"help":     cmdHelp,
+	"version":  cmdVersion,
+}
+
+// cmdVersion toasts the running build's version and short commit (see
+// version.Short), so a dev build can be told from a release without
+// leaving the TUI.
+func cmdVersion(a *App, _ commandArgs) tea.Cmd {
+	info := a.buildInfo
+	if info == "" {
+		info = "slk (unknown build)"
+	}
+	return toastWithClear(a, info, 5*time.Second)
 }
 
 // cmdHelp opens the keybindings overlay, as ? does. Its entries list

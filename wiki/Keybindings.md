@@ -12,6 +12,7 @@
 | `Esc` | Insert / Command | Return to normal mode |
 | `:` | Normal | Command prompt (`:ws`, `:marks`, `:sp`, … — see [[Commands]]) |
 | `?` / `:help` | Normal | Show every keybinding and `:` command; `/` filters the list |
+| `:version` | Normal | Show the running build's version and commit (`slk --version` also prints the build date) |
 | `Tab` / `Shift+Tab` | Command | Complete the command name; press again to cycle through the matches, which the status bar lists beside the prompt |
 | `Enter` | Insert | Send message |
 | `Shift+Enter` | Insert | Newline |
