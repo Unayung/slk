@@ -7,8 +7,9 @@ slk has two kinds of commands:
 - **Slash commands**, typed in a composer, are Slack's: `/away`, `/remind`,
   `/msg`, app commands and the rest.
 
-Everything else is a key. See [[Keybindings]] for those, or press `?` in
-slk for the keybindings overlay.
+Everything else is a key. See [[Keybindings]] for those, or press `?` (or
+run `:help`) in slk for the keybindings overlay, which lists the `:`
+commands too.
 
 ## `:` commands
 
@@ -29,6 +30,7 @@ the status bar beside the prompt, with the current one highlighted.
 | `:vsp` | `Ctrl+w v` | Split the focused window side by side |
 | `:q` | `Ctrl+w q` | Close the focused window. This never quits slk: on the last window it says "Cannot close last window" |
 | `:only` (or `:on`) | `Ctrl+w o` | Close every window except the focused one |
+| `:help` | `?` | Open the keybindings overlay, which also lists every `:` command |
 
 Names must match exactly when you press `Enter`, so `:act` is not
 `:activity` (`Tab` completes it); the only short form is `:on`. Anything
@@ -45,7 +47,6 @@ These aren't `:` commands, but slk does them:
 
 | You tried | Use |
 |---|---|
-| `:help` | `?` opens the keybindings overlay; this page and [[Keybindings]] cover the rest |
 | `:search` | `/` searches the current channel; `Ctrl+f` searches the whole workspace on Slack's servers |
 | `:join`, `:goto`, `:chan` | `Ctrl+t` or `Ctrl+p` opens the channel finder; `/open #channel` in a composer joins and opens a channel by name |
 | `:i` | `i` starts writing a message (Insert mode) |
