@@ -11,8 +11,9 @@ import (
 )
 
 // uiSettings is the UI configuration (display and composer behaviour)
-// run() and runDemo() both hand the App. It carries values rather than the config file so that demo
-// mode can build one without loading any config.
+// run() and runDemo() both hand the App. It carries values rather than
+// the config file so that demo mode can build one without loading any
+// config.
 type uiSettings struct {
 	TimestampFormat  string
 	TypingIndicators bool
@@ -20,8 +21,8 @@ type uiSettings struct {
 	MouseWheelLines  int
 	ColoredUsernames bool
 	ThemeOverrides   core.Theme
-	// StayInInsertAfterSend is [compose] stay_in_insert_after_send,
-	// resolved (default on).
+	// StayInInsertAfterSend is [compose] stay_in_insert_after_send
+	// (default off).
 	StayInInsertAfterSend bool
 }
 
@@ -34,7 +35,7 @@ func uiSettingsFromConfig(cfg config.Config) uiSettings {
 		MouseWheelLines:       cfg.Appearance.MouseWheelLines,
 		ColoredUsernames:      cfg.Appearance.ColoredUsernames,
 		ThemeOverrides:        cfg.Theme,
-		StayInInsertAfterSend: cfg.EffectiveStayInInsertAfterSend(),
+		StayInInsertAfterSend: cfg.Compose.StayInInsertAfterSend,
 	}
 }
 

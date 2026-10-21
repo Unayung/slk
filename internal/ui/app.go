@@ -566,9 +566,7 @@ type App struct {
 
 	// stayInInsertAfterSend is the [compose] stay_in_insert_after_send
 	// option: whether Enter leaves the composer focused in insert mode
-	// after a send. Set by main.go from config, whose default is on;
-	// the zero value here is deliberate so a test App built without the
-	// option behaves as it always has.
+	// after a send. Set by main.go from config; off by default.
 	stayInInsertAfterSend bool
 
 	// search is the active in-channel search (nil = none).
@@ -2742,8 +2740,7 @@ func (a *App) SetComposeEditor(editor []string) {
 
 // SetStayInInsertAfterSend sets the [compose] stay_in_insert_after_send
 // option: whether Enter leaves the composer focused in insert mode
-// after a send. Defaults to off here so a test App behaves as it always
-// has; main.go passes the config's resolved value, whose default is on.
+// after a send. Off by default.
 func (a *App) SetStayInInsertAfterSend(b bool) {
 	a.stayInInsertAfterSend = b
 }

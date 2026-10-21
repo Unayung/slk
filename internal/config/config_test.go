@@ -483,17 +483,11 @@ func TestConfig_MarksShowJumpOverlayFalseDistinguishableFromUnset(t *testing.T) 
 	}
 }
 
-// An unset [compose].stay_in_insert_after_send must leave the pointer
-// nil while resolving to on: the *bool exists so an explicit false is
-// distinguishable from a missing key.
+// An unset [compose].stay_in_insert_after_send is off: sending drops back
+// to normal mode unless the user asks otherwise.
 func TestConfig_ComposeStayInInsertDefault(t *testing.T) {
-	cfg := loadConfigString(t, "")
-	if cfg.Compose.StayInInsertAfterSend != nil {
-		t.Fatalf("stay_in_insert_after_send must be unset (nil) by default, got %v",
-			*cfg.Compose.StayInInsertAfterSend)
-	}
-	if !cfg.EffectiveStayInInsertAfterSend() {
-		t.Error("unset stay_in_insert_after_send must resolve to on")
+	if loadConfigString(t, "").Compose.StayInInsertAfterSend {
+		t.Error("unset stay_in_insert_after_send must be off")
 	}
 }
 
@@ -507,12 +501,8 @@ func TestConfig_ComposeStayInInsertExplicit(t *testing.T) {
 		{"off", "[compose]\nstay_in_insert_after_send = false\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := loadConfigString(t, tc.body)
-			if cfg.Compose.StayInInsertAfterSend == nil {
-				t.Fatal("an explicit stay_in_insert_after_send must set the pointer")
-			}
-			if got := cfg.EffectiveStayInInsertAfterSend(); got != tc.want {
-				t.Fatalf("EffectiveStayInInsertAfterSend = %v, want %v", got, tc.want)
+			if got := loadConfigString(t, tc.body).Compose.StayInInsertAfterSend; got != tc.want {
+				t.Fatalf("StayInInsertAfterSend = %v, want %v", got, tc.want)
 			}
 		})
 	}

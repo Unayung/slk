@@ -32,11 +32,9 @@ type Compose struct {
 	Editor string `toml:"editor"`
 	// StayInInsertAfterSend keeps the composer focused and in insert
 	// mode after Enter sends a message, so several messages can be
-	// typed in a row without pressing `i` before each one. A *bool so
-	// "unset" (nil, resolved to true by EffectiveStayInInsertAfterSend)
-	// is distinguishable from an explicit false; a plain bool would
-	// give the wrong default. Default on.
-	StayInInsertAfterSend *bool `toml:"stay_in_insert_after_send"`
+	// typed in a row without pressing `i` before each one. Default off:
+	// sending drops back to normal mode, the vim convention.
+	StayInInsertAfterSend bool `toml:"stay_in_insert_after_send"`
 }
 
 // SectionDef defines a sidebar section with channel name patterns.
@@ -451,18 +449,6 @@ func (c Config) EffectiveUseSlackSections(teamID string) bool {
 func (c Config) EffectiveShowJumpOverlay() bool {
 	if c.Marks.ShowJumpOverlay != nil {
 		return *c.Marks.ShowJumpOverlay
-	}
-	return true
-}
-
-// EffectiveStayInInsertAfterSend returns whether Enter stays in insert
-// mode after sending a message: an explicit
-// [compose].stay_in_insert_after_send wins when set, otherwise the
-// default is on. Off restores the vim convention, where finishing an
-// action drops back to normal mode.
-func (c Config) EffectiveStayInInsertAfterSend() bool {
-	if c.Compose.StayInInsertAfterSend != nil {
-		return *c.Compose.StayInInsertAfterSend
 	}
 	return true
 }

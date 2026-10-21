@@ -51,14 +51,14 @@ func TestApplyUISettings_StayInInsertAfterSend(t *testing.T) {
 }
 
 // TestUISettingsFromConfig_StayInInsertAfterSend reads the option from a
-// config file the way run() does: unset means on.
+// config file the way run() does: unset means off.
 func TestUISettingsFromConfig_StayInInsertAfterSend(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		body string
 		want bool
 	}{
-		{"unset", "", true},
+		{"unset", "", false},
 		{"on", "[compose]\nstay_in_insert_after_send = true\n", true},
 		{"off", "[compose]\nstay_in_insert_after_send = false\n", false},
 	} {
