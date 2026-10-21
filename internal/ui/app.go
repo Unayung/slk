@@ -3408,14 +3408,6 @@ func (a *App) SetBuildInfo(s string) {
 	a.buildInfo = s
 }
 
-// openHelpOverlay opens the keybindings overlay with entries derived
-// from the live keymap. Shared by ? and :help.
-func (a *App) openHelpOverlay() {
-	a.help.SetEntries(help.FromKeyMap(a.keys))
-	a.help.Open()
-	a.SetMode(ModeHelp)
-}
-
 // SetMouseWheelLines configures the number of lines the viewport scrolls per
 // mouse-wheel notch. Values < 1 are coerced to 1 to guarantee scroll progress.
 func (a *App) SetMouseWheelLines(n int) {
