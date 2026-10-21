@@ -745,13 +745,17 @@ func TestRebuildFilter_NoChannelOrderSortsAlphabetically(t *testing.T) {
 		{ID: "C1", Name: "ui_ux", Type: "channel", Section: "Eng", SectionOrder: 1},
 		{ID: "C2", Name: "Zulu", Type: "channel", Section: "Eng", SectionOrder: 1},
 		{ID: "C3", Name: "alpha", Type: "private", Section: "Eng", SectionOrder: 1},
+		{ID: "C4", Name: "Éclair", Type: "channel", Section: "Eng", SectionOrder: 1},
+		{ID: "C5", Name: "café", Type: "channel", Section: "Eng", SectionOrder: 1},
+		{ID: "C6", Name: "cafe", Type: "channel", Section: "Eng", SectionOrder: 1},
 	}
 	m := New(items)
 	var got []string
 	for _, idx := range m.filtered {
 		got = append(got, m.items[idx].ID)
 	}
-	want := []string{"C3", "C1", "C2"}
+	// Éclair sorts before Zulu; café and cafe retain input order when folded names tie.
+	want := []string{"C3", "C5", "C6", "C4", "C1", "C2"}
 	if len(got) != len(want) {
 		t.Fatalf("filtered len = %d, want %d (got=%v)", len(got), len(want), got)
 	}
