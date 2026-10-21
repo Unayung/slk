@@ -557,3 +557,33 @@ func TestChannelSwitchClosesOpenActionDialog(t *testing.T) {
 		t.Errorf("shownPrompt = %+v, want nil", a.shownPrompt)
 	}
 }
+
+// A dialog that opened over the thread composer must not hand insert mode
+// back to it once a channel switch has closed the thread: the channel
+// composer, the one on screen, takes the keys.
+func TestDialogCloseAfterThreadClosedFocusesChannelComposer(t *testing.T) {
+	a, _ := actionApp(t, nil)
+	a.SetStayInInsertAfterSend(true)
+	a.SetMode(ModeInsert)
+	showThread(t, a)
+	a.threadCompose.SetValue("x")
+	arrive(t, a, mentionEphemeral(ephTS))
+	pressKey(t, a, keyMod('u', tea.ModCtrl)) // empty the thread composer
+	a.threadCompose.SetValue("hi")
+	pressKey(t, a, keyCode(tea.KeyEnter)) // send: the dialog opens over the thread composer
+	if !dialogShows(a, "[2] Dismiss") || !a.shownPromptThread {
+		t.Fatalf("precondition: the dialog should open over the thread composer; mode %v", a.mode)
+	}
+
+	a.Update(ChannelSelectedMsg{ID: "C2", Name: "random", Type: "channel"})
+	if a.threadVisible {
+		t.Fatal("precondition: the channel switch should close the thread")
+	}
+	if a.confirmPrompt.IsVisible() {
+		pressKey(t, a, keyCode(tea.KeyEscape))
+	}
+	a.Update(keyPress('y'))
+	if a.mode != ModeInsert || a.compose.Value() != "y" {
+		t.Errorf("mode = %v, compose = %q, thread compose = %q; want the typed y in the channel composer", a.mode, a.compose.Value(), a.threadCompose.Value())
+	}
+}

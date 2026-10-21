@@ -20,6 +20,12 @@ func (a *App) afterConfirmPrompt(cmd tea.Cmd) tea.Cmd {
 	if !a.confirmPrompt.IsVisible() {
 		restore, thread := a.shownPromptInsert, a.shownPromptThread
 		a.clearShownPrompt()
+		if restore && thread && !a.threadVisible {
+			// A channel switch closed the thread while the dialog was
+			// up: the channel composer is the one left to type in.
+			thread = false
+			a.focusedPanel = PanelMessages
+		}
 		if restore {
 			a.SetMode(ModeInsert)
 			var focus tea.Cmd
