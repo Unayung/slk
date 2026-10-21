@@ -1353,11 +1353,15 @@ func TestInsertModeKeys(t *testing.T) {
 // what it means in normal mode; with text, the composer keeps it.
 func TestInsertModeHotkeysOnEmptyComposer(t *testing.T) {
 	ctrl := func(r rune) tea.KeyMsg { return keyMod(r, tea.ModCtrl) }
+	// The handoff exists for stay_in_insert_after_send, so every row
+	// turns it on unless it says otherwise.
+	stay := func(a *App) { a.SetStayInInsertAfterSend(true) }
 	runKeyCases(t, ModeInsert, []keyCase{
 		{
 			name: "ctrl+p on an empty channel composer opens the channel finder",
 			opts: insertOpts(),
 			setup: func(t *testing.T, a *App) {
+				stay(a)
 				_ = a.compose.Focus()
 			},
 			key:      ctrl('p'),
@@ -1367,6 +1371,7 @@ func TestInsertModeHotkeysOnEmptyComposer(t *testing.T) {
 			name: "ctrl+p on an empty THREAD composer opens the channel finder",
 			opts: insertOpts(),
 			setup: func(t *testing.T, a *App) {
+				stay(a)
 				showThread(t, a)
 			},
 			key:      ctrl('p'),
@@ -1376,6 +1381,7 @@ func TestInsertModeHotkeysOnEmptyComposer(t *testing.T) {
 			name: "ctrl+n on an empty composer leaves insert and starts a new message",
 			opts: insertOpts(),
 			setup: func(t *testing.T, a *App) {
+				stay(a)
 				_ = a.compose.Focus()
 			},
 			key:      ctrl('n'),
@@ -1398,6 +1404,7 @@ func TestInsertModeHotkeysOnEmptyComposer(t *testing.T) {
 			name: "ctrl+p with text stays in the composer",
 			opts: insertOpts(),
 			setup: func(t *testing.T, a *App) {
+				stay(a)
 				typeInto(t, &a.compose, "hi")
 			},
 			key:      ctrl('p'),
@@ -1412,6 +1419,7 @@ func TestInsertModeHotkeysOnEmptyComposer(t *testing.T) {
 			name: "ctrl+h with text is still backspace",
 			opts: insertOpts(),
 			setup: func(t *testing.T, a *App) {
+				stay(a)
 				typeInto(t, &a.compose, "hi")
 			},
 			key:      ctrl('h'),
@@ -1426,10 +1434,66 @@ func TestInsertModeHotkeysOnEmptyComposer(t *testing.T) {
 			name: "ctrl+p with only an attachment stays in the composer",
 			opts: insertOpts(),
 			setup: func(t *testing.T, a *App) {
+				stay(a)
 				_ = a.compose.Focus()
 				a.compose.AddAttachment(core.PendingAttachment{
 					Filename: "a.png", Bytes: []byte("png"), Size: 3,
 				})
+			},
+			key:      ctrl('p'),
+			wantMode: ModeInsert,
+		},
+		{
+			name: "ctrl+w on an empty composer stays in insert (delete word, not the window prefix)",
+			opts: insertOpts(),
+			setup: func(t *testing.T, a *App) {
+				stay(a)
+				_ = a.compose.Focus()
+			},
+			key:      ctrl('w'),
+			wantMode: ModeInsert,
+			assert: func(t *testing.T, a *App, _ tea.Cmd) {
+				if a.pendingWinCmd {
+					t.Error("ctrl+w armed the window chord from the composer")
+				}
+			},
+		},
+		{
+			name: "ctrl+h on an empty composer stays in insert (backspace, not back)",
+			opts: insertOpts(),
+			setup: func(t *testing.T, a *App) {
+				stay(a)
+				_ = a.compose.Focus()
+			},
+			key:      ctrl('h'),
+			wantMode: ModeInsert,
+		},
+		{
+			name: "ctrl+k on an empty composer stays in insert (delete to line end, not forward)",
+			opts: insertOpts(),
+			setup: func(t *testing.T, a *App) {
+				stay(a)
+				_ = a.compose.Focus()
+			},
+			key:      ctrl('k'),
+			wantMode: ModeInsert,
+		},
+		{
+			name: "ctrl+p on an empty composer with the option off stays in the composer",
+			opts: insertOpts(),
+			setup: func(t *testing.T, a *App) {
+				_ = a.compose.Focus()
+			},
+			key:      ctrl('p'),
+			wantMode: ModeInsert,
+		},
+		{
+			name: "ctrl+p while editing a message whose text was cleared stays in the composer",
+			opts: insertOpts(),
+			setup: func(t *testing.T, a *App) {
+				stay(a)
+				a.editing.Begin("C1", "1.0", PanelMessages, "")
+				_ = a.compose.Focus()
 			},
 			key:      ctrl('p'),
 			wantMode: ModeInsert,

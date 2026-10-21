@@ -81,23 +81,19 @@ func handleInsertMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		a.cancelEdit()
 		return nil
 	}
-	if a.insertComposerEmpty() && a.isAppHotkey(msg) {
+	if a.stayInInsertAfterSend && a.insertComposerEmpty() && a.isAppHotkey(msg) {
 		// Every app Ctrl shortcut doubles as a textarea editing key
-		// (ctrl+p previous line, ctrl+h backspace, ctrl+a line
-		// start, ...). With nothing in the composer there is nothing
-		// to edit, so the shortcut means what it means in normal
-		// mode. Leaving insert mode this way rechecks waiting
-		// dialogs, as Esc does, sequenced after the shortcut's
-		// command so a modal or view that command opens (ctrl+n's
-		// picker comes from the message it returns) is in place
-		// first; a dialog under a modal waits for it to close. ctrl+w
-		// only arms its chord: the check waits for the chord key
-		// (handleNormalMode), since opening a dialog would disarm it.
+		// (ctrl+p previous line, ctrl+a line start, ...). With
+		// stay_in_insert_after_send on, insert mode is where a send
+		// leaves you, so with nothing in the composer the shortcut
+		// means what it means in normal mode. Leaving insert mode
+		// this way rechecks waiting dialogs, as Esc does, sequenced
+		// after the shortcut's command so a modal or view that
+		// command opens (ctrl+n's picker comes from the message it
+		// returns) is in place first; a dialog under a modal waits
+		// for it to close.
 		a.exitInsert()
 		cmd := handleNormalMode(a, msg)
-		if a.pendingWinCmd {
-			return cmd
-		}
 		if cmd == nil {
 			return a.tryOpenActionPrompt()
 		}
@@ -343,17 +339,18 @@ func (a *App) insertComposerEmpty() bool {
 
 // isAppHotkey reports whether msg is one of the app's Ctrl shortcuts that
 // insert mode hands to the normal-mode handler when the composer is empty
-// (see insertComposerEmpty). Ctrl+E (external editor) and Ctrl+O
-// (broadcast) are composer keys and stay out; Ctrl+U / Ctrl+D scroll a
-// pane and would leave insert mode for no gain.
+// (see insertComposerEmpty). Keys people repeat to delete text stay out,
+// so one press too many cannot change mode: Ctrl+W (delete word, the
+// window prefix), Ctrl+H (backspace, back) and Ctrl+K (delete to line
+// end, forward). So do Ctrl+E (external editor) and Ctrl+O (broadcast),
+// which are composer keys, and Ctrl+U / Ctrl+D, which scroll a pane and
+// would leave insert mode for no gain. The rest work again after Esc.
 func (a *App) isAppHotkey(msg tea.KeyMsg) bool {
 	return key.Matches(msg,
 		a.keys.FuzzyFinder, a.keys.FuzzyFinderAlt,
-		a.keys.NavBack, a.keys.NavForward,
 		a.keys.NewMessage, a.keys.ActivityView,
 		a.keys.WorkspaceSearch, a.keys.PresenceMenu,
 		a.keys.ToggleSidebar, a.keys.ToggleThread,
 		a.keys.ThemeSwitcher, a.keys.ThemeSwitcherGlobal,
-		a.keys.WindowPrefix,
 	)
 }

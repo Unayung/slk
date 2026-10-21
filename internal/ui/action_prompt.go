@@ -205,8 +205,8 @@ func (a *App) enqueueActionPrompt(ref actionPromptRef) tea.Cmd {
 // messages no longer shown are dropped. Called on enqueue and from the
 // re-check points only: the confirm prompt closing, any other modal
 // closing from a key (dispatchModeKey, via actionPromptRecheckMsg, after
-// the key's command has run), leaving insert mode, a ctrl+w chord
-// finishing, and a send clearing the composer.
+// the key's command has run), leaving insert mode, and a send clearing the
+// composer.
 func (a *App) tryOpenActionPrompt() tea.Cmd {
 	for len(a.actionQueue) > 0 {
 		ref := a.actionQueue[0]

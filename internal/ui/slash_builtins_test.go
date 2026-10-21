@@ -652,3 +652,25 @@ func TestSlashOpen_FromThreadComposerKeepsTyping(t *testing.T) {
 		t.Errorf("mode = %v, compose = %q; want INSERT with the typed x in the channel composer", a.mode, a.compose.Value())
 	}
 }
+
+// The same switch into a channel already known to be read-only drops
+// insert mode instead: the channel composer that would take over is
+// disabled.
+func TestSlashOpen_FromThreadComposerIntoReadOnlyChannelLeavesInsert(t *testing.T) {
+	a, _, _, _ := openSlashApp(t)
+	a.SetStayInInsertAfterSend(true)
+	a.readOnlyChannels = map[string]bool{"C2": true}
+	a.SetMode(ModeInsert)
+	showThread(t, a)
+	a.threadCompose.SetValue("/open #random")
+
+	for _, m := range deliveredMsgs[ChannelSelectedMsg](t, pressEnter(a)) {
+		a.Update(m)
+	}
+	if a.activeChannelID != "C2" || !a.composeDisabled {
+		t.Fatalf("active = %q, composeDisabled = %v; want read-only #random", a.activeChannelID, a.composeDisabled)
+	}
+	if a.mode == ModeInsert {
+		t.Error("insert mode carried into a disabled channel composer")
+	}
+}

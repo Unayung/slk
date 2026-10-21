@@ -12,7 +12,7 @@
 | `Esc` | Insert / Command | Return to normal mode |
 | `:` | Normal | Command prompt (`:ws`, `:marks`, `:sp`, … — see [[Commands]]) |
 | `Enter` | Insert | Send message and stay in insert mode for the next one (`[compose] stay_in_insert_after_send = false` returns to normal mode instead); sending an attachment always returns to normal mode while it uploads |
-| `Ctrl+P`, `Ctrl+H`, `Ctrl+A`, … | Insert (empty composer) | With no text, no attachment and no edit in progress, the app's Ctrl shortcuts leave insert mode and act as in normal mode; otherwise they edit the text as before |
+| `Ctrl+P`, `Ctrl+N`, `Ctrl+A`, … | Insert (empty composer) | With `[compose] stay_in_insert_after_send` on and no text, no attachment and no edit in progress, the app's Ctrl shortcuts leave insert mode and act as in normal mode; otherwise they edit the text as before. `Ctrl+W`, `Ctrl+H` and `Ctrl+K` always edit the text, so repeating them to delete never changes mode |
 | `Shift+Enter` | Insert | Newline |
 | `Ctrl+V` | Insert | Smart paste — image / file path / text (use `Ctrl+V`, not the terminal's `Ctrl+Shift+V`) |
 | `Ctrl+U` | Insert | Clear compose (text + pending attachments) |

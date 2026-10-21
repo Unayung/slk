@@ -71,6 +71,7 @@ func TestTypingDefersDialogWithOneToast(t *testing.T) {
 // that opens a modal of its own keeps the dialog waiting until that closes.
 func TestEmptyComposerShortcutOpensWaitingDialog(t *testing.T) {
 	a, _ := actionApp(t, nil)
+	a.SetStayInInsertAfterSend(true)
 	a.SetMode(ModeInsert)
 	a.compose.SetValue("x")
 	arrive(t, a, mentionEphemeral(ephTS))
@@ -87,6 +88,7 @@ func TestEmptyComposerShortcutOpensWaitingDialog(t *testing.T) {
 
 func TestEmptyComposerModalShortcutKeepsDialogWaiting(t *testing.T) {
 	a, _ := actionApp(t, nil)
+	a.SetStayInInsertAfterSend(true)
 	a.SetMode(ModeInsert)
 	a.compose.SetValue("x")
 	arrive(t, a, mentionEphemeral(ephTS))
@@ -107,6 +109,7 @@ func TestEmptyComposerModalShortcutKeepsDialogWaiting(t *testing.T) {
 // dead once the picker closes.
 func TestEmptyComposerNewMessageShortcutKeepsDialogWaiting(t *testing.T) {
 	a, _ := actionApp(t, nil)
+	a.SetStayInInsertAfterSend(true)
 	a.SetMode(ModeInsert)
 	a.compose.SetValue("x")
 	arrive(t, a, mentionEphemeral(ephTS))
@@ -164,6 +167,7 @@ func drainWorstOrder(cmd tea.Cmd) []tea.Msg {
 // not open over it.
 func TestEmptyComposerActivityShortcutDropsChannelDialog(t *testing.T) {
 	a, _ := actionApp(t, nil)
+	a.SetStayInInsertAfterSend(true)
 	a.SetMode(ModeInsert)
 	a.compose.SetValue("x")
 	arrive(t, a, mentionEphemeral(ephTS))
@@ -175,29 +179,6 @@ func TestEmptyComposerActivityShortcutDropsChannelDialog(t *testing.T) {
 	}
 	if a.confirmPrompt.IsVisible() || a.mode == ModeConfirm {
 		t.Errorf("mode = %v; the channel's dialog opened over the Activity view", a.mode)
-	}
-}
-
-// Ctrl+W from an empty composer only arms the window chord. A waiting
-// dialog must not open in between (it would disarm the chord): the split
-// runs, then the dialog opens.
-func TestEmptyComposerWindowChordRunsBeforeDialog(t *testing.T) {
-	a, _ := actionApp(t, nil)
-	a.SetMode(ModeInsert)
-	a.compose.SetValue("x")
-	arrive(t, a, mentionEphemeral(ephTS))
-
-	pressKey(t, a, keyMod('u', tea.ModCtrl))
-	pressKey(t, a, keyMod('w', tea.ModCtrl))
-	if a.confirmPrompt.IsVisible() || !a.pendingWinCmd {
-		t.Fatalf("mode = %v, chord armed = %v; the dialog must wait for the chord key", a.mode, a.pendingWinCmd)
-	}
-	pressKey(t, a, keyPress('s'))
-	if n := a.wins.Len(); n != 2 {
-		t.Errorf("windows = %d, want 2 after ctrl+w s", n)
-	}
-	if !dialogShows(a, "[2] Dismiss") {
-		t.Errorf("mode = %v; the waiting dialog should open once the chord has run", a.mode)
 	}
 }
 

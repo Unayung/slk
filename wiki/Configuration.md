@@ -62,7 +62,10 @@ quiet_hours = "22:00-08:00"   # planned
 
 [compose]
 editor = "nvim"   # Ctrl+E editor, used when $VISUAL and $EDITOR are unset
-stay_in_insert_after_send = true   # keep typing after Enter sends; false returns to normal mode like vim
+# Keep typing after Enter sends; false returns to normal mode like vim. While
+# it's on, app Ctrl shortcuts (Ctrl+P, Ctrl+N, Ctrl+A, ...) also work from an
+# empty composer; Ctrl+W, Ctrl+H and Ctrl+K keep deleting text there.
+stay_in_insert_after_send = true
 
 [cache]
 message_retention_days = 30

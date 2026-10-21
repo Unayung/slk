@@ -10,8 +10,8 @@ import (
 	versionpkg "github.com/gammons/slk/internal/version"
 )
 
-// uiSettings is the display configuration run() and runDemo() both hand
-// the App. It carries values rather than the config file so that demo
+// uiSettings is the UI configuration (display and composer behaviour)
+// run() and runDemo() both hand the App. It carries values rather than the config file so that demo
 // mode can build one without loading any config.
 type uiSettings struct {
 	TimestampFormat  string
