@@ -92,6 +92,7 @@ type Model struct {
 	chromeCrumbChannel string
 	chromeCrumbType    string
 	chromeAuthor       string
+	crumbChannelCols   int
 
 	// userNamesV / channelNamesV are bumped every time SetUserNames /
 	// SetChannelNames replaces the map. Used by chromeCache (and any other
@@ -339,13 +340,17 @@ func (m *Model) AddReply(msg messages.MessageItem) {
 // pressed Enter on a thread reply, before chat.postMessage returned
 // the real Slack TS) with the authoritative msg. Returns true if a
 // row matching localTS was found and swapped, false otherwise.
-// Mirrors messages.Model.SwapLocalSent.
+// Mirrors messages.Model.SwapLocalSent, except that a pane at the bottom
+// stays there (HoldBottom) instead of re-snapping to the reply: the
+// authoritative copy may be taller (an unfurl), and a re-snap shows the
+// top of a reply taller than the pane.
 func (m *Model) SwapLocalSentReply(localTS string, msg messages.MessageItem) bool {
 	if localTS == "" {
 		return false
 	}
 	for i := len(m.replies) - 1; i >= 0; i-- {
 		if m.replies[i].TS == localTS {
+			m.list.HoldBottom()
 			m.replies[i] = msg
 			m.InvalidateCache()
 			return true
@@ -383,11 +388,13 @@ func (m *Model) RemoveLocalSentReply(localTS string) bool {
 //
 // Mirrors messages.Model.UpsertSelfSent — see that method for the
 // motivating bug (Slack's WS-echo Text may flatten paragraph breaks
-// for rich_text_block messages).
+// for rich_text_block messages). A replacement keeps a pane at the
+// bottom there, as SwapLocalSentReply does.
 func (m *Model) UpsertSelfSentReply(msg messages.MessageItem) {
 	if msg.TS != "" {
 		for i := len(m.replies) - 1; i >= 0; i-- {
 			if m.replies[i].TS == msg.TS {
+				m.list.HoldBottom()
 				m.replies[i] = msg
 				m.InvalidateCache()
 				return
@@ -484,10 +491,12 @@ func (m *Model) ChannelNames() map[string]string { return m.channelNames }
 // UpdateMessageInPlace finds the reply with item's TS and applies a
 // message_changed echo to it (MessageItem.ApplyChange: text, edited
 // mark, blocks, attachments; reactions and the rest are kept). Returns
-// true if found.
+// true if found. A pane at the bottom stays there (HoldBottom), so an
+// unfurl or an edit does not push the reply's new rows under the fold.
 func (m *Model) UpdateMessageInPlace(item messages.MessageItem) bool {
 	for i, r := range m.replies {
 		if r.TS == item.TS {
+			m.list.HoldBottom()
 			m.replies[i].ApplyChange(item)
 			m.InvalidateCache()
 			return true
@@ -521,11 +530,13 @@ func (m *Model) RemoveMessageByTS(ts string) bool {
 
 // UpdateParentInPlace applies a message_changed echo to the thread
 // parent if its TS matches item's (see UpdateMessageInPlace). Returns
-// true if updated.
+// true if updated. The parent is the list's first entry, so its growth
+// pushes every reply down; a pane at the bottom stays there.
 func (m *Model) UpdateParentInPlace(item messages.MessageItem) bool {
 	if m.parent.TS != item.TS {
 		return false
 	}
+	m.list.HoldBottom()
 	m.parent.ApplyChange(item)
 	m.InvalidateCache()
 	return true
@@ -885,6 +896,9 @@ func (m *Model) UpdateReaction(messageTS, emojiName, userID string, remove bool)
 		return
 	}
 
+	// A first pill row must not push the bottom of the pane under the
+	// fold (as in messages.Model.UpdateReaction).
+	m.list.HoldBottom()
 	messages.ApplyReaction(msg, emojiName, userID, m.currentUserID, remove)
 	m.InvalidateCache()
 	if m.nav.Active {
@@ -1045,7 +1059,7 @@ func (m *Model) viewInternal(height, width int, applySelection bool) string {
 		m.chromeCrumbChannel != m.crumbChannel ||
 		m.chromeCrumbType != m.crumbType ||
 		m.chromeAuthor != author {
-		header := renderBreadcrumb(width, m.crumbChannel, m.crumbType, author, chromeReplyCount)
+		header, channelCols := renderBreadcrumb(width, m.crumbChannel, m.crumbType, author, chromeReplyCount)
 		separator := lipgloss.NewStyle().
 			Width(width).
 			Background(styles.Background).
@@ -1061,6 +1075,7 @@ func (m *Model) viewInternal(height, width int, applySelection bool) string {
 		m.chromeCrumbChannel = m.crumbChannel
 		m.chromeCrumbType = m.crumbType
 		m.chromeAuthor = author
+		m.crumbChannelCols = channelCols
 	}
 	chrome := m.chromeCache
 	chromeHeight := m.chromeHeight
@@ -1133,7 +1148,7 @@ func (m *Model) viewInternal(height, width int, applySelection bool) string {
 		// A parent without a ts cannot be clicked or text-selected.
 		parent.Plain = parentPlain
 		for _, h := range parentRendered.Hits {
-			if h.Kind == entrylist.HitImage {
+			if h.Kind == entrylist.HitImage || h.Kind == entrylist.HitFile {
 				parent.Hits = append(parent.Hits, h)
 			}
 		}
@@ -1306,6 +1321,15 @@ func (m *Model) viewInternal(height, width int, applySelection bool) string {
 	return fitHeight(chrome+"\n"+strings.Join(rows, "\n"), height)
 }
 
+// HitTestBreadcrumbChannel reports whether pane-local (row, col) lands on
+// the breadcrumb's channel label - the span the click router turns into
+// closing the thread and returning to the channel, the mouse equivalent
+// of the hint's esc. Row 0 is the breadcrumb row, the first row under the
+// pane's top border; the span covers the label only, not the separator.
+func (m *Model) HitTestBreadcrumbChannel(row, col int) bool {
+	return row == 0 && col >= 0 && m.crumbChannelCols > 0 && col < m.crumbChannelCols
+}
+
 // HitTestReaction returns the (reply index, reaction emoji name) at
 // (row, col) within the thread's content area, or ok=false when no
 // reaction pill covers that cell. Coordinate frame: row 0 is the first
@@ -1327,6 +1351,23 @@ func (m *Model) HitTestReaction(row, col int) (replyIdx int, emoji string, ok bo
 func (m *Model) HitTestImage(row, col int) (ts string, attIdx int, ok bool) {
 	h, ok := m.list.HitTest(entrylist.HitImage, row, col)
 	if !ok || h.Key == "" {
+		return "", 0, false
+	}
+	switch {
+	case h.Ref == parentSelected:
+		return m.parent.TS, h.Aux, m.parent.TS != ""
+	case h.Ref >= 0 && h.Ref < len(m.replies):
+		return m.replies[h.Ref].TS, h.Aux, true
+	}
+	return "", 0, false
+}
+
+// HitTestFile returns the ts of the message (the parent or a reply)
+// and the attachment index of the "[File]" line at (row, col), or
+// ok=false. Coordinate frame mirrors HitTestReaction.
+func (m *Model) HitTestFile(row, col int) (ts string, attIdx int, ok bool) {
+	h, ok := m.list.HitTest(entrylist.HitFile, row, col)
+	if !ok {
 		return "", 0, false
 	}
 	switch {
