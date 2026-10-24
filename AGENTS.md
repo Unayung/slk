@@ -145,6 +145,7 @@ scrollbars, date formatting, case folding, or ID formatting: it already exists.
 | Emoji shortcode → glyph | `emoji.Sprint`, `emoji.CodeMap`, `emoji.StripSkinTone` |
 | Slack's skin-tone number (2–6) for a modifier codepoint (U+1F3FB–U+1F3FF) | `emoji.SlackSkinToneNumber` |
 | Does Block Kit already render the message body? | `blockkit.RendersBody(blocks)`, `messages.BlocksCarryBody(msg)` |
+| Splice sixel halfblock fallback rows into rendered Block Kit / legacy / file-attachment lines (panes without the sixel placement pipeline, i.e. the thread pane) | `blockkit.SpliceSixelFallbacks(lines, rows)` — grafts each row at the entry's `Col`, keeping the line's own surroundings; the only splice loop |
 | Current DND state from a Slack API result | `slack.DNDStateFromStatus` |
 | Persist a full Web API profile's custom status and huddle (including clears) | `cmd/slk/applyProfileStatus(teamID, userID, profile, db, send)` after `UpsertUser`, before any resolved-user notice or row repair; `UpsertUser` alone deliberately preserves status on conflict |
 | Drop cached thread replies a complete `conversations.replies` response no longer contains (missed deletes, Slackbot ephemerals) | `(*cache.DB).PruneThreadReplies(channelID, threadTS, returnedTS, fetchStartUnix)`; soft-deletes, never touches the parent or rows cached after the fetch began |
