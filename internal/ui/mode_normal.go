@@ -10,12 +10,12 @@
 //     (page), G (bottom), Tab/h/l (focus next/prev), Ctrl-h/l
 //     (nav back/forward through visited channels; Ctrl-k is an
 //     alias for forward)
-//   - layout toggles: s (sidebar), t (thread)
+//   - layout toggles: ctrl+b (sidebar), ctrl+] (thread)
 //   - theme cycle: Alt-Y / Alt-Shift-Y apply the next / previous
 //     theme, wrapping around (saved per workspace, like Ctrl-Y)
 //   - message ops: y (copy message), Y/C (copy permalink), E (edit), D (delete),
-//     U (mark unread), m (set mark), ' (jump to mark), O/v (open image
-//     preview)
+//     x (remove link preview), U (mark unread), m (set mark),
+//     ' (jump to mark), O/v (open image preview)
 //   - reaction nav sub-state: r enters; arrows + Enter select
 //     (delegated to handleReactionNav, for either content pane)
 //   - window commands: Ctrl-W prefix arms a pending sub-state; the
@@ -99,19 +99,7 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		// user can see it, not in a channel compose hidden behind
 		// the thread.
 		toThread := a.focusedPanel == PanelThread || (a.view == ViewThreads && a.threadVisible) || a.threadDrawnAlone()
-		// composeDisabled reflects the active CHANNEL's send capability,
-		// not the thread panel's -- a thread reply targets whatever
-		// thread is open, which need not be in that channel.
-		if a.composeDisabled && !toThread {
-			return toastWithClear(a, a.composeBlockedText(), 2*time.Second)
-		}
-		a.SetMode(ModeInsert)
-		if toThread {
-			a.focusedPanel = PanelThread
-			return a.threadCompose.Focus()
-		}
-		a.focusedPanel = PanelMessages
-		return a.compose.Focus()
+		return a.beginInsertMode(toThread)
 
 	case key.Matches(msg, a.keys.CommandMode):
 		a.enterCommandMode()
@@ -293,6 +281,8 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, a.keys.PresenceMenu):
 		header := a.workspaceNameForActive()
 		pres, dndEnabled, dndEnd, _ := a.presence.Status(a.activeTeamID)
+		statusText, statusEmoji := a.presence.CustomStatus(a.currentUserID)
+		a.presenceMenu.SetCurrentCustomStatus(statusText, statusEmoji)
 		a.presenceMenu.OpenWith(header, pres, dndEnabled, dndEnd)
 		a.SetMode(ModePresenceMenu)
 
@@ -342,6 +332,9 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 
 	case key.Matches(msg, a.keys.Delete):
 		return a.beginDeleteOfSelected()
+
+	case key.Matches(msg, a.keys.RemovePreview):
+		return a.removePreviewOfSelected()
 
 	case key.Matches(msg, a.keys.OpenPreview):
 		return a.openImagePreviewOfSelected()

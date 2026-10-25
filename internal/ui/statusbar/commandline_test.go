@@ -268,3 +268,40 @@ func TestSetCommandCandidates_GapBeforePills(t *testing.T) {
 		}
 	}
 }
+
+// TestSetCommandCandidates_CustomStatusTakesWhatTheListLeaves checks the
+// custom-status segment against the completion list: the list is sized
+// first, so a long status can't hide it, the status gets only what the
+// list leaves (keeping the gap before the pills), and the bar never
+// widens past width.
+func TestSetCommandCandidates_CustomStatusTakesWhatTheListLeaves(t *testing.T) {
+	candidates := []string{"activity", "delmarks", "help", "huddle", "marks", "on", "only", "q", "sp", "version", "vsp", "ws"}
+	for width := 40; width <= 160; width++ {
+		for idx := range candidates {
+			m := New()
+			m.SetConnectionState(StateConnected)
+			m.SetCustomStatus(strings.Repeat("a very long status indeed ", 5), "🏠")
+			m.SetCommandLine(":")
+			m.SetCommandCandidates(candidates, idx)
+
+			out := m.View(width)
+			if got := lipgloss.Width(out); got != width {
+				t.Fatalf("View(%d) with candidate %d current is %d cells wide:\n%q", width, idx, got, out)
+			}
+			stripped := ansi.Strip(out)
+			// The same bar without the status: where it shows the current
+			// name, the status must not take that name's room.
+			bare := New()
+			bare.SetConnectionState(StateConnected)
+			bare.SetCommandLine(":")
+			bare.SetCommandCandidates(candidates, idx)
+			shown := strings.Contains(ansi.Strip(bare.View(width)), candidates[idx])
+			if shown && !strings.Contains(stripped, candidates[idx]) {
+				t.Errorf("View(%d): the status hid the current candidate %q:\n%s", width, candidates[idx], stripped)
+			}
+			if i := strings.Index(stripped, "🏠"); i > 0 && stripped[i-1] != ' ' {
+				t.Errorf("View(%d) with candidate %d current: the list runs into the status:\n%s", width, idx, stripped)
+			}
+		}
+	}
+}

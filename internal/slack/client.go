@@ -50,6 +50,7 @@ type SlackAPI interface {
 	JoinConversation(channelID string) (*slack.Channel, string, []string, error)
 	SetUserPresenceContext(ctx context.Context, presence string) error
 	GetUserPresenceContext(ctx context.Context, user string) (*slack.UserPresence, error)
+	SetUserCustomStatusContext(ctx context.Context, statusText, statusEmoji string, statusExpiration int64) error
 	SetSnoozeContext(ctx context.Context, minutes int) (*slack.DNDStatus, error)
 	EndSnoozeContext(ctx context.Context) (*slack.DNDStatus, error)
 	EndDNDContext(ctx context.Context) error
@@ -1105,25 +1106,26 @@ type ThreadsAggregate struct {
 // Also returns the threads aggregate (HasUnreads / counts) for the
 // workspace; the threads block in client.counts is the only place
 // Slack tells us whether per-thread unreads exist without us having to
-// hit subscriptions.thread.* directly.
-func (c *Client) GetUnreadCounts() ([]UnreadInfo, ThreadsAggregate, error) {
+// hit subscriptions.thread.* directly. The int is the workspace's
+// total unread activity (see sumActivityV2).
+func (c *Client) GetUnreadCounts() ([]UnreadInfo, ThreadsAggregate, int, error) {
 	reqURL := c.apiBaseURL + "client.counts"
 	form := url.Values{"token": {c.token}}
 	req, err := http.NewRequest("POST", reqURL, strings.NewReader(form.Encode()))
 	if err != nil {
-		return nil, ThreadsAggregate{}, fmt.Errorf("creating request: %w", err)
+		return nil, ThreadsAggregate{}, 0, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := c.apiHTTPClient().Do(req)
 	if err != nil {
-		return nil, ThreadsAggregate{}, fmt.Errorf("fetching unread counts: %w", err)
+		return nil, ThreadsAggregate{}, 0, fmt.Errorf("fetching unread counts: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, ThreadsAggregate{}, fmt.Errorf("reading response: %w", err)
+		return nil, ThreadsAggregate{}, 0, fmt.Errorf("reading response: %w", err)
 	}
 
 	var result struct {
@@ -1157,14 +1159,19 @@ func (c *Client) GetUnreadCounts() ([]UnreadInfo, ThreadsAggregate, error) {
 			UnreadCount  int  `json:"unread_count"`
 			MentionCount int  `json:"mention_count"`
 		} `json:"threads"`
+		// ActivityV2 is the unread-activity rollup the desktop client
+		// shows on its Activity badge: one count per category
+		// (mentions, thread replies, reactions, DMs, invites, ...),
+		// workspace-wide. Absent for tokens the grid restricts.
+		ActivityV2 map[string]int `json:"activity_v2"`
 	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, ThreadsAggregate{}, fmt.Errorf("parsing response: %w", err)
+		return nil, ThreadsAggregate{}, 0, fmt.Errorf("parsing response: %w", err)
 	}
 
 	if !result.OK {
-		return nil, ThreadsAggregate{}, fmt.Errorf("client.counts API returned ok=false")
+		return nil, ThreadsAggregate{}, 0, fmt.Errorf("client.counts API returned ok=false")
 	}
 
 	var unreads []UnreadInfo
@@ -1203,7 +1210,23 @@ func (c *Client) GetUnreadCounts() ([]UnreadInfo, ThreadsAggregate, error) {
 		UnreadCount:  result.Threads.UnreadCount,
 		MentionCount: result.Threads.MentionCount,
 	}
-	return unreads, threads, nil
+	return unreads, threads, sumActivityV2(result.ActivityV2), nil
+}
+
+// sumActivityV2 totals an activity_v2 map - the per-category unread
+// activity counts client.counts and the badge_counts_updated event
+// both carry - into the single number the desktop client shows on its
+// Activity badge. Every category counts: the map is Slack's own
+// "these are your unread activity items" split, and the badge is its
+// sum. An absent or empty map (restricted tokens never see one) sums
+// to 0, which callers must treat as "unknown" when they care about
+// the distinction.
+func sumActivityV2(m map[string]int) int {
+	total := 0
+	for _, n := range m {
+		total += n
+	}
+	return total
 }
 
 // SendReply posts a threaded reply to the specified message. When
@@ -1311,6 +1334,15 @@ func (c *Client) GetUserPresence(ctx context.Context, userID string) (*slack.Use
 		return nil, fmt.Errorf("getting presence: %w", err)
 	}
 	return p, nil
+}
+
+// SetCustomStatus sets the authenticated user's profile status text,
+// emoji, and expiration (Unix seconds; 0 means it never auto-clears).
+func (c *Client) SetCustomStatus(ctx context.Context, statusText, statusEmoji string, statusExpiration int64) error {
+	if err := c.api.SetUserCustomStatusContext(ctx, statusText, statusEmoji, statusExpiration); err != nil {
+		return fmt.Errorf("setting custom status: %w", err)
+	}
+	return nil
 }
 
 // SetSnooze enables Do-Not-Disturb for `minutes` minutes.

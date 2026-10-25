@@ -6,6 +6,8 @@
 - Apps' "working" status: "Atlas is working..." under the channel, and the app's own status text ("Atlas Thinking...") in the open thread it is working on
 - Edit your own messages (`E`) — reuses the compose box with stash/restore for any in-progress draft
 - Delete your own messages (`D`) — centered confirmation overlay with message preview
+- Remove a link preview from your own message (`x`): the "x" on Slack's preview card. A confirmation names the preview (one button per preview when the message has several); the card disappears when Slack confirms the change. Works from the messages pane and from a thread reply. Slack decides what it allows, so removing the card of a message you forwarded can be refused.
+- Live message updates: an edit, a link preview Slack adds a moment after you post, or a preview you remove all update the message in place. Only a real edit adds the "(edited)" mark.
 - Slack markdown rendering (bold, italic, strikethrough, code, blockquotes, links, mentions)
 - Emoji shortcodes (`:rocket:` → 🚀)
 - Day separators (Today, Yesterday, Monday, full date)
@@ -133,6 +135,7 @@ See [[Terminal Compatibility|Terminal-Compatibility]] for which protocol your te
 
 - Set self presence (Active / Away) and DND/snooze from `Ctrl+S`
 - Standard snooze durations (20m / 1h / 2h / 4h / 8h / 24h / until tomorrow morning) plus custom minutes
+- Workspace status presets (Working from home / On vacation) and Clear status, independent of presence — picking Active/Away never clears an existing status. Per-workspace, like presence and DND.
 - Live status segment in the status bar with snooze countdown
 - Reflects external state changes — set from the official Slack client or via your own API scripts — in real time over the WebSocket
 - Shows other people's state too: their custom status emoji (🎧 instead while they are in a huddle) follows their name on DM rows, message authors and channel-finder rows, `⊘` replaces the presence dot while they are in DND, and an open DM's header shows the full status text and when their DND ends

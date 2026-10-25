@@ -14,7 +14,8 @@
 | `?` / `:help` | Normal | Show every keybinding and `:` command; `/` filters the list |
 | `:version` | Normal | Show the running build's version and commit (`slk --version` also prints the build date) |
 | `Tab` / `Shift+Tab` | Command | Complete the command name; press again to cycle through the matches, which the status bar lists beside the prompt |
-| `Enter` | Insert | Send message |
+| `Enter` | Insert | Send message (`[compose] stay_in_insert_after_send = true` keeps insert mode for the next one, except after sending an attachment, which returns to normal mode while it uploads) |
+| `Ctrl+P`, `Ctrl+N`, `Ctrl+A`, … | Insert (empty composer) | With `[compose] stay_in_insert_after_send` on and no text, no attachment and no edit in progress, the app's Ctrl shortcuts leave insert mode and act as in normal mode; otherwise they edit the text as before. `Ctrl+W`, `Ctrl+H` and `Ctrl+K` always edit the text, so repeating them to delete never changes mode |
 | `Shift+Enter` | Insert | Newline |
 | `Ctrl+V` | Insert | Smart paste — image / file path / text (use `Ctrl+V`, not the terminal's `Ctrl+Shift+V`) |
 | `Ctrl+U` | Insert | Clear compose (text + pending attachments) |
@@ -57,6 +58,7 @@
 | `R` | Normal (message) | Quick-toggle existing reactions |
 | `E` | Normal (message) | Edit your own message |
 | `D` | Normal (message) | Delete your own message (with confirmation) |
+| `x` | Normal (message) | Remove a link preview from your own message (with confirmation; a choice of previews when there are several) |
 | `U` | Normal (message) | Mark selected message and everything newer as unread |
 | `S` | Normal (thread) | Save thread to markdown file (`~/.local/share/slk/exports/` or `$XDG_DATA_HOME/slk/exports/`) |
 | `y` | Normal (message) | Copy message text |
@@ -71,7 +73,7 @@
 | Click | Any (on image) | Open full-screen preview |
 | `Ctrl+y` | Any | Switch theme |
 | `Alt+y` / `Alt+Shift+y` | Normal | Next / previous theme (wraps; saved per workspace) |
-| `Ctrl+s` | Any | Set status (Active / Away / DND snooze) |
+| `Ctrl+s` | Any | Set status (Active / Away / DND snooze / Working from home / On vacation / Clear status) |
 | `q` | Normal | Close the thread pane (does nothing when none is open) |
 | `Q` | Normal | Quit (with confirmation) |
 | `Ctrl+c` | Any | Quit (with confirmation) |
