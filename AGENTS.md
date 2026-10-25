@@ -170,6 +170,7 @@ scrollbars, date formatting, case folding, or ID formatting: it already exists.
 | Legacy attachment action ids slack-go drops | `slackclient.EphemeralMessage.ActionIDs` (decoded from the raw frame), applied with `cmd/slk/applyActionIDs` |
 | Slack original-avatar URL → sized CDN URL (e.g. 72px) | `avatar.SizedURL(orig, px)`; returns non-Slack-original URLs unchanged |
 | Copy text to the clipboard | `App.clipboardWrite` / `SetClipboardWriter`; `cmd/slk/newClipboardWriter` selects local macOS `pbcopy` or terminal OSC 52 |
+| The running build's identity as text: the full line (`slk v1.2.3 (commit …, built …)`) or the short form for the status bar (`v1.2.3 · abc1234`, version alone when no commit was stamped) | `version.Line(version, commit, date)` (what `slk --version` prints), `version.Short(version, commit)` (what `:version` shows, set on the App by `SetBuildInfo`) (`internal/version`) |
 
 ### UI chrome
 
