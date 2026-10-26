@@ -40,11 +40,28 @@ func BenchmarkRenderSlackMarkdownSpans(b *testing.B) {
 	}
 }
 
-// BenchmarkReapplyBgOnRenderedBody isolates the ReapplyBgAfterResets call
-// RenderSlackMarkdownWith makes, on a real rendered body.
-func BenchmarkReapplyBgOnRenderedBody(b *testing.B) {
+// unpatchedBody returns the markdown body as it is just before the final
+// ReapplyBgAfterResets pass in RenderSlackMarkdownWith: the rendered output
+// with the style that pass appended after each reset removed. It fails the
+// benchmark if re-applying the pass does not reproduce the rendered body.
+func unpatchedBody(b *testing.B, style string) string {
+	b.Helper()
 	body := RenderSlackMarkdownWith(reapplyBenchText(10), reapplyBenchOpts)
+	raw := strings.ReplaceAll(body, "\x1b[0m"+style, "\x1b[0m")
+	raw = strings.ReplaceAll(raw, "\x1b[m"+style, "\x1b[m")
+	if ReapplyBgAfterResets(raw, style) != body {
+		b.Fatal("stripped body does not round-trip through ReapplyBgAfterResets")
+	}
+	return raw
+}
+
+// BenchmarkReapplyBgOnRenderedBody isolates the ReapplyBgAfterResets call
+// RenderSlackMarkdownWith makes. The input is the body as that call sees it,
+// before the pass has patched it (a patched body would hit the replacement
+// path on every reset a second time, which production never does).
+func BenchmarkReapplyBgOnRenderedBody(b *testing.B) {
 	style := BgANSI() + FgANSI()
+	body := unpatchedBody(b, style)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(body)))
 	b.ResetTimer()
@@ -68,12 +85,17 @@ func BenchmarkRenderMessageSpans(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		// Zero RenderOptions: a plain-message baseline, not the channel
+		// pane's options.
 		_ = RenderMessage(msg, 100, rc, RenderOptions{})
 	}
 }
 
 // BenchmarkWithBackground measures the Block Kit line path: one
-// ReapplyBgAfterResets per line.
+// ReapplyBgAfterResets per line. Its input is a patched markdown body on
+// purpose: Block Kit text is rendered through RenderSlackMarkdownWith
+// (render_message.go RenderText), whose output has already been through the
+// final reapply pass, and WithBackground then runs over those lines.
 func BenchmarkWithBackground(b *testing.B) {
 	body := RenderSlackMarkdownWith(reapplyBenchText(10), reapplyBenchOpts)
 	lines := strings.Split(body, "\n")
