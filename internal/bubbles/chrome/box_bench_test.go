@@ -35,7 +35,6 @@ func BenchmarkBox(b *testing.B) {
 			b.Run(fmt.Sprintf("lines=%d/%s", n, name), func(b *testing.B) {
 				content := s.Title.Render("Dialog title") + "\n\n" + benchBody(s, n, sgr) + "\n\n" + s.Footer.Render("esc close")
 				b.ReportAllocs()
-				b.ResetTimer()
 				for b.Loop() {
 					benchSink = Box(s, content, 60)
 				}

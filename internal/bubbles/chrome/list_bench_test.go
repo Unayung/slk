@@ -35,11 +35,21 @@ var benchCursors = []struct {
 	{"end", func(total int) int { return total - 1 }},
 }
 
-// benchRowTexts is the fake content of the visible rows.
-func benchRowTexts(start, end int) []string {
+// benchRawTexts is the unstyled fake content of the visible rows.
+func benchRawTexts(start, end int) []string {
 	rows := make([]string, 0, end-start)
 	for i := start; i < end; i++ {
 		rows = append(rows, fmt.Sprintf("channel-%04d  some fake topic text", i))
+	}
+	return rows
+}
+
+// benchRowTexts is benchRawTexts rendered and padded to width w, as the
+// List.Rows contract requires.
+func benchRowTexts(s Styles, w, start, end int) []string {
+	rows := benchRawTexts(start, end)
+	for i, t := range rows {
+		rows[i] = s.Row.Width(w).Render(t)
 	}
 	return rows
 }
@@ -58,12 +68,11 @@ func BenchmarkList_Dialog(b *testing.B) {
 			b.Run(fmt.Sprintf("items=%d/cursor=%s", total, c.name), func(b *testing.B) {
 				sel := c.at(total)
 				b.ReportAllocs()
-				b.ResetTimer()
 				for b.Loop() {
 					start, end := Window(sel, total, benchWindowRows)
 					l := List{Start: start, End: end, Total: total}
 					w := l.ContentWidth(40)
-					texts := benchRowTexts(start, end)
+					texts := benchRawTexts(start, end)
 					for k, t := range texts {
 						st := s.Row
 						if start+k == sel {
@@ -82,7 +91,6 @@ func BenchmarkList_Dialog(b *testing.B) {
 // scrolls (Total > window); "nogutter" has Total equal to the window.
 func BenchmarkList_Rows(b *testing.B) {
 	s := benchStyles()
-	rows := benchRowTexts(0, benchWindowRows)
 	cases := []struct {
 		name  string
 		total int
@@ -97,9 +105,8 @@ func BenchmarkList_Rows(b *testing.B) {
 				sel := c.at(tc.total)
 				start, end := Window(sel, tc.total, benchWindowRows)
 				l := List{Start: start, End: end, Total: tc.total}
-				in := rows[:end-start]
+				in := benchRowTexts(s, l.ContentWidth(40), start, end)
 				b.ReportAllocs()
-				b.ResetTimer()
 				for b.Loop() {
 					benchSinkRows = l.Rows(s, sel, in)
 				}
@@ -115,7 +122,6 @@ func BenchmarkList_Gutter(b *testing.B) {
 			start, end := Window(total/2, total, benchWindowRows)
 			l := List{Start: start, End: end, Total: total}
 			b.ReportAllocs()
-			b.ResetTimer()
 			for b.Loop() {
 				for i := start; i < end; i++ {
 					benchSink = l.Gutter(s, i)
@@ -128,7 +134,6 @@ func BenchmarkList_Gutter(b *testing.B) {
 func BenchmarkList_ContentWidthScrolls(b *testing.B) {
 	l := List{Start: 10, End: 22, Total: 1000}
 	b.ReportAllocs()
-	b.ResetTimer()
 	for b.Loop() {
 		benchSinkBool = l.Scrolls()
 		benchSinkInt = l.ContentWidth(40)
@@ -137,7 +142,6 @@ func BenchmarkList_ContentWidthScrolls(b *testing.B) {
 
 func BenchmarkWindow(b *testing.B) {
 	b.ReportAllocs()
-	b.ResetTimer()
 	for b.Loop() {
 		benchSinkInt, _ = Window(500, 1000, benchWindowRows)
 	}
@@ -146,29 +150,27 @@ func BenchmarkWindow(b *testing.B) {
 func BenchmarkMarker(b *testing.B) {
 	s := benchStyles()
 	b.ReportAllocs()
-	b.ResetTimer()
 	for b.Loop() {
 		benchSink = Marker(s, true)
 		benchSink = Marker(s, false)
 	}
 }
 
-// BenchmarkFrame is a whole dialog frame: title, input, a window of rows
-// through List.Rows, a footer.
+// BenchmarkFrame is a whole dialog frame built per draw: window, padded
+// row content, List.Rows, filter input, footer, then Frame.Render.
 func BenchmarkFrame(b *testing.B) {
 	s := benchStyles()
 	for _, total := range []int{10, 1000} {
 		b.Run(fmt.Sprintf("items=%d", total), func(b *testing.B) {
 			sel := total / 2
-			start, end := Window(sel, total, benchWindowRows)
-			l := List{Start: start, End: end, Total: total}
-			body := l.Rows(s, sel, benchRowTexts(start, end))
-			input := FilterInput(s, "chan", "Search")
-			footer := s.Footer.Render(strings.Repeat("k ", 8))
-			f := Frame{Title: "Switch channel", Input: input, Body: body, Footer: footer}
 			b.ReportAllocs()
-			b.ResetTimer()
 			for b.Loop() {
+				start, end := Window(sel, total, benchWindowRows)
+				l := List{Start: start, End: end, Total: total}
+				body := l.Rows(s, sel, benchRowTexts(s, l.ContentWidth(40), start, end))
+				input := FilterInput(s, "chan", "Search")
+				footer := s.Footer.Render(strings.Repeat("k ", 8))
+				f := Frame{Title: "Switch channel", Input: input, Body: body, Footer: footer}
 				benchSink = f.Render(s, 48)
 			}
 		})
