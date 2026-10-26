@@ -37,7 +37,11 @@ import (
 // While MarkInFlight has been called within this window for a channel,
 // NewMessageMsg suppresses self-user echoes for that channel to avoid
 // the visible flicker between WS echo and HTTP response.
-const selfSendWindow = 3 * time.Second
+//
+// 6s, not the 3s it was: a message with links first waits up to 3s for
+// the apps' previews (internal/slack linkChipWait) before chat.postMessage
+// even starts, so its echo can land well past 3s.
+const selfSendWindow = 6 * time.Second
 
 // selfSendDedup tracks self-originated sends. See package comment.
 type selfSendDedup struct {
