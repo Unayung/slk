@@ -10,12 +10,12 @@
 //     (page), G (bottom), Tab/h/l (focus next/prev), Ctrl-h/l
 //     (nav back/forward through visited channels; Ctrl-k is an
 //     alias for forward)
-//   - layout toggles: s (sidebar), t (thread)
+//   - layout toggles: ctrl+b (sidebar), ctrl+] (thread)
 //   - theme cycle: Alt-Y / Alt-Shift-Y apply the next / previous
 //     theme, wrapping around (saved per workspace, like Ctrl-Y)
 //   - message ops: y (copy message), Y/C (copy permalink), E (edit), D (delete),
-//     U (mark unread), m (set mark), ' (jump to mark), O/v (open image
-//     preview)
+//     x (remove link preview), U (mark unread), m (set mark),
+//     ' (jump to mark), O/v (open image preview)
 //   - reaction nav sub-state: r enters; arrows + Enter select
 //     (delegated to handleReactionNav, for either content pane)
 //   - window commands: Ctrl-W prefix arms a pending sub-state; the
@@ -36,7 +36,6 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/gammons/slk/internal/ui/help"
 	"github.com/gammons/slk/internal/ui/themeswitcher"
 )
 
@@ -91,7 +90,6 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 
 	switch {
 	case key.Matches(msg, a.keys.InsertMode):
-		a.SetMode(ModeInsert)
 		// In the Threads view there is no main compose box -- the
 		// only way to type is into the right-side thread panel's
 		// compose. Force focus there even when the threads list
@@ -100,12 +98,8 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		// (e.g. focus on the sidebar): typing must land where the
 		// user can see it, not in a channel compose hidden behind
 		// the thread.
-		if a.focusedPanel == PanelThread || (a.view == ViewThreads && a.threadVisible) || a.threadDrawnAlone() {
-			a.focusedPanel = PanelThread
-			return a.threadCompose.Focus()
-		}
-		a.focusedPanel = PanelMessages
-		return a.compose.Focus()
+		toThread := a.focusedPanel == PanelThread || (a.view == ViewThreads && a.threadVisible) || a.threadDrawnAlone()
+		return a.beginInsertMode(toThread)
 
 	case key.Matches(msg, a.keys.CommandMode):
 		a.enterCommandMode()
@@ -266,9 +260,7 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		return a.scrollFocusedPanel(a.halfPageSize())
 
 	case key.Matches(msg, a.keys.Help):
-		a.help.SetEntries(help.FromKeyMap(a.keys))
-		a.help.Open()
-		a.SetMode(ModeHelp)
+		a.openHelpOverlay()
 
 	case key.Matches(msg, a.keys.ThemeSwitcher):
 		// Per-workspace scope. Header text shows the current
@@ -289,6 +281,8 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, a.keys.PresenceMenu):
 		header := a.workspaceNameForActive()
 		pres, dndEnabled, dndEnd, _ := a.presence.Status(a.activeTeamID)
+		statusText, statusEmoji := a.presence.CustomStatus(a.currentUserID)
+		a.presenceMenu.SetCurrentCustomStatus(statusText, statusEmoji)
 		a.presenceMenu.OpenWith(header, pres, dndEnabled, dndEnd)
 		a.SetMode(ModePresenceMenu)
 
@@ -315,6 +309,9 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, a.keys.UserProfile):
 		return a.openUserProfile()
 
+	case key.Matches(msg, a.keys.Huddle):
+		return cmdHuddle(a, commandArgs{})
+
 	case key.Matches(msg, a.keys.SaveThread):
 		return a.saveThreadToFile()
 
@@ -335,6 +332,9 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 
 	case key.Matches(msg, a.keys.Delete):
 		return a.beginDeleteOfSelected()
+
+	case key.Matches(msg, a.keys.RemovePreview):
+		return a.removePreviewOfSelected()
 
 	case key.Matches(msg, a.keys.OpenPreview):
 		return a.openImagePreviewOfSelected()

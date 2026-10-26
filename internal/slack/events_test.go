@@ -20,6 +20,8 @@ type mockEventHandler struct {
 	messages            []string
 	ephemerals          []EphemeralMessage
 	subtypes            []string
+	changed             []bool
+	edited              []bool
 	deletedMessages     []string
 	reactions           []string
 	presenceChanges     []string
@@ -27,6 +29,7 @@ type mockEventHandler struct {
 	assistantStatuses   []AssistantStatus
 	selfPresenceChanges []string
 	dndChanges          []dndChangeRecord
+	badgeCounts         []int
 	lastBlocks          slack.Blocks
 	lastAttachments     []slack.Attachment
 	lastUserID          string
@@ -96,8 +99,10 @@ type threadSubChangeRecord struct {
 	active                        bool
 }
 
-func (m *mockEventHandler) OnMessage(channelID, userID, ts, text, threadTS, subtype string, edited bool, files []slack.File, blocks slack.Blocks, attachments []slack.Attachment, botID, username string) {
+func (m *mockEventHandler) OnMessage(channelID, userID, ts, text, threadTS, subtype string, changed, edited bool, files []slack.File, blocks slack.Blocks, attachments []slack.Attachment, botID, username string) {
 	m.messages = append(m.messages, text)
+	m.changed = append(m.changed, changed)
+	m.edited = append(m.edited, edited)
 	m.subtypes = append(m.subtypes, subtype)
 	m.lastBlocks = blocks
 	m.lastAttachments = attachments
@@ -139,6 +144,9 @@ func (m *mockEventHandler) OnSelfPresenceChange(presence string) {
 }
 func (m *mockEventHandler) OnDNDChange(enabled bool, endUnix int64) {
 	m.dndChanges = append(m.dndChanges, dndChangeRecord{enabled, endUnix})
+}
+func (m *mockEventHandler) OnBadgeCountsUpdated(activityTotal int) {
+	m.badgeCounts = append(m.badgeCounts, activityTotal)
 }
 
 func (m *mockEventHandler) OnChannelMarked(channelID, ts string, unreadCount, mentionCount int) {
@@ -199,7 +207,7 @@ func TestEventHandlerInterface(t *testing.T) {
 	handler := &mockEventHandler{}
 	var _ EventHandler = handler
 
-	handler.OnMessage("C1", "U1", "123.456", "hello", "", "", false, nil, slack.Blocks{}, nil, "", "")
+	handler.OnMessage("C1", "U1", "123.456", "hello", "", "", false, false, nil, slack.Blocks{}, nil, "", "")
 	if len(handler.messages) != 1 || handler.messages[0] != "hello" {
 		t.Error("expected message to be recorded")
 	}
@@ -317,6 +325,32 @@ func TestDispatchWebSocketMessageChangedEvent(t *testing.T) {
 	if handler.messages[0] != "edited text" {
 		t.Errorf("expected 'edited text', got %q", handler.messages[0])
 	}
+	// No `edited` object: Slack sends this for an unfurl or a removed
+	// preview. It is a change, but nobody edited the text.
+	if !handler.changed[0] || handler.edited[0] {
+		t.Errorf("changed=%v edited=%v, want changed only", handler.changed[0], handler.edited[0])
+	}
+}
+
+func TestDispatchWebSocketMessageChangedWithEditedObject(t *testing.T) {
+	handler := &mockEventHandler{}
+
+	data := []byte(`{"type":"message","subtype":"message_changed","channel":"C1","message":{"user":"U1","text":"edited text","ts":"123.456","edited":{"user":"U1","ts":"124.000"}}}`)
+	dispatchWebSocketEvent(data, handler)
+
+	if len(handler.changed) != 1 || !handler.changed[0] || !handler.edited[0] {
+		t.Errorf("changed=%v edited=%v, want both true", handler.changed, handler.edited)
+	}
+}
+
+func TestDispatchWebSocketPlainMessageIsNeitherChangedNorEdited(t *testing.T) {
+	handler := &mockEventHandler{}
+
+	dispatchWebSocketEvent([]byte(`{"type":"message","channel":"C1","user":"U1","text":"hi","ts":"123.456"}`), handler)
+
+	if len(handler.changed) != 1 || handler.changed[0] || handler.edited[0] {
+		t.Errorf("changed=%v edited=%v, want both false", handler.changed, handler.edited)
+	}
 }
 
 // TestDispatchWebSocketThreadBroadcastEvent asserts that a
@@ -389,6 +423,33 @@ func TestDispatchWebSocketManualPresenceChangeEvent(t *testing.T) {
 	}
 	if handler.selfPresenceChanges[0] != "away" {
 		t.Errorf("expected 'away', got %q", handler.selfPresenceChanges[0])
+	}
+}
+
+func TestDispatchWebSocketBadgeCountsUpdatedEvent(t *testing.T) {
+	handler := &mockEventHandler{}
+	data := []byte(`{"type":"badge_counts_updated","activity_v2":{"at_user":2,"at_channel":4,"thread_v2":1},"event_ts":"1792759813.009500"}`)
+	dispatchWebSocketEvent(data, handler)
+	if len(handler.badgeCounts) != 1 {
+		t.Fatalf("expected 1 badge count update, got %d", len(handler.badgeCounts))
+	}
+	if handler.badgeCounts[0] != 7 {
+		t.Errorf("expected summed activity total 7, got %d", handler.badgeCounts[0])
+	}
+}
+
+func TestSumActivityV2Map(t *testing.T) {
+	if got := sumActivityV2(nil); got != 0 {
+		t.Errorf("sumActivityV2(nil) = %d, want 0", got)
+	}
+	if got := sumActivityV2(map[string]int{}); got != 0 {
+		t.Errorf("sumActivityV2(empty) = %d, want 0", got)
+	}
+	// The live capture's shape: several categories, some zero. Every
+	// value sums as-is rather than being clamped - the map is Slack's
+	// own accounting.
+	if got := sumActivityV2(map[string]int{"at_channel": 44, "bot_dm_bundle": 4, "at_user": 2, "thread_v2": 2, "channel": 1, "saved_reminder": 0}); got != 53 {
+		t.Errorf("sumActivityV2 = %d, want 53", got)
 	}
 }
 

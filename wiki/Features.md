@@ -6,6 +6,8 @@
 - Apps' "working" status: "Atlas is working..." under the channel, and the app's own status text ("Atlas Thinking...") in the open thread it is working on
 - Edit your own messages (`E`) — reuses the compose box with stash/restore for any in-progress draft
 - Delete your own messages (`D`) — centered confirmation overlay with message preview
+- Remove a link preview from your own message (`x`): the "x" on Slack's preview card. A confirmation names the preview (one button per preview when the message has several); the card disappears when Slack confirms the change. Works from the messages pane and from a thread reply. Slack decides what it allows, so removing the card of a message you forwarded can be refused.
+- Live message updates: an edit, a link preview Slack adds a moment after you post, or a preview you remove all update the message in place. Only a real edit adds the "(edited)" mark.
 - Slack markdown rendering (bold, italic, strikethrough, code, blockquotes, links, mentions)
 - Emoji shortcodes (`:rocket:` → 🚀)
 - Day separators (Today, Yesterday, Monday, full date)
@@ -18,6 +20,7 @@
 - ANSI-aware wrapping and truncation (no broken color codes mid-line)
 - Drag-to-copy: drag the mouse across messages to highlight them; release to copy plain text to the system clipboard via OSC 52
 - Copy message text (`y`) and copy permalink (`Y` / `C`) to the system clipboard via OSC 52
+- Copy huddle link (`H` or `:huddle`) — the `https://app.slack.com/huddle/<TEAM>/<CHANNEL>` deep link Slack's own "Copy huddle link" produces, for the active conversation (channels, DMs and group DMs; a thread copies its parent's). Opening it joins the live huddle or shows Slack's huddle panel for that conversation. The profile dialog (`K`) also offers `c` / a click on the 📋 on the "🎧 In a huddle" row when Slack reported which channel the person's huddle is in.
 - Forward a message or thread reply (`F`) — the same fuzzy picker as `Ctrl+t`, limited to joined channels and existing DMs in the current workspace. Enter shares the original permalink with Slack preview unfurling enabled; Esc cancels. Keeps your current channel and draft unchanged. Slack controls preview availability and access to the original message. Pressing Enter on the forwarded message navigates to the original.
 
 ## Compose
@@ -110,6 +113,7 @@ See [[Terminal Compatibility|Terminal-Compatibility]] for which protocol your te
 - Glob-based config sections (`[sections.*]` in `config.toml`) — used when `use_slack_sections = false` or as a fallback when Slack's API is unreachable. Channel patterns can carry an optional `":<N>"` suffix (e.g. `"eng-general:1"`) to pin order within a section; see [Configuration › Ordering channels within a section](Configuration.md#ordering-channels-within-a-section).
 - Fuzzy channel finder (`Ctrl+t` / `Ctrl+p`) — auto-expands a collapsed section when you open a channel inside it; ranks 1:1 DMs above group DMs when searching by person name
 - Workspace picker (`:ws`) and direct jump (`1`–`9`)
+- `:` command line with Tab completion (`Shift+Tab` goes back) and the matching names listed in the status bar; `:help` (same as `?`) lists every key and command, `:version` shows the running build
 - All workspaces stay connected in parallel for live unread badges
 
 ## Marks & Navigation
@@ -131,6 +135,7 @@ See [[Terminal Compatibility|Terminal-Compatibility]] for which protocol your te
 
 - Set self presence (Active / Away) and DND/snooze from `Ctrl+S`
 - Standard snooze durations (20m / 1h / 2h / 4h / 8h / 24h / until tomorrow morning) plus custom minutes
+- Workspace status presets (Working from home / On vacation) and Clear status, independent of presence — picking Active/Away never clears an existing status. Per-workspace, like presence and DND.
 - Live status segment in the status bar with snooze countdown
 - Reflects external state changes — set from the official Slack client or via your own API scripts — in real time over the WebSocket
 - Shows other people's state too: their custom status emoji (🎧 instead while they are in a huddle) follows their name on DM rows, message authors and channel-finder rows, `⊘` replaces the presence dot while they are in DND, and an open DM's header shows the full status text and when their DND ends
