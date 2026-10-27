@@ -2,9 +2,10 @@
 //
 // Insert-mode key handler (Phase 5l).
 //
-// Insert mode routes keys to the active compose textarea (main
-// compose or thread compose, depending on focusedPanel + thread
-// visibility). It also owns:
+// Insert mode routes keys to the thread compose when the thread panel
+// is focused and visible, else to the channel compose. The exception
+// is Esc during an edit: it goes to the compose hosting the edit
+// (editing.Panel()), whatever has focus. It also owns:
 //
 //   - Any key with active upload -> "Upload in progress" toast (no
 //     draft mutations or sends while an upload is in flight).
