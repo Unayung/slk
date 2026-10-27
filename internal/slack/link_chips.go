@@ -35,8 +35,9 @@ import (
 
 // linkChipWait is how long a send waits for the apps to publish previews
 // of its links. The web client's capture shows about 2.5s from paste to
-// chip. A var so tests can shorten it. internal/ui's selfSendWindow covers
-// it: a send with links can take this long before chat.postMessage starts.
+// chip. A var so tests can shorten it. A send with links can take this
+// long before chat.postMessage starts; internal/ui's BeginSend keeps
+// suppressing the echo of a send until it answers (selfSendPendingLimit).
 var linkChipWait = 3 * time.Second
 
 // maxLinkChips caps the chat.unfurlLink calls one send makes. Links past
@@ -152,15 +153,18 @@ func applyChips(block *slack.RichTextBlock, chips map[string]linkChip) {
 	})
 }
 
-// chipMrkdwn rewrites each chip's bare <url> in the mrkdwn fallback as
+// chipMrkdwn rewrites each chip's link in the mrkdwn fallback as
 // <url|title>, which is what notifications and slk's own optimistic row
-// (it drops the WebSocket echo of its own send) show. A <url> written
-// literally inside a code span is rewritten too; only the fallback text
-// is affected, the blocks are exact.
+// (it drops the WebSocket echo of its own send) show. The link is <url>,
+// or <url|url> when the user labelled it with itself (chipEligible takes
+// both). One written literally inside a code span is rewritten too; only
+// the fallback text is affected, the blocks are exact.
 func chipMrkdwn(mr string, chips map[string]linkChip) string {
 	esc := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
 	for u, chip := range chips {
-		mr = strings.ReplaceAll(mr, "<"+u+">", "<"+u+"|"+esc.Replace(chip.Title)+">")
+		titled := "<" + u + "|" + esc.Replace(chip.Title) + ">"
+		mr = strings.ReplaceAll(mr, "<"+u+">", titled)
+		mr = strings.ReplaceAll(mr, "<"+u+"|"+u+">", titled)
 	}
 	return mr
 }

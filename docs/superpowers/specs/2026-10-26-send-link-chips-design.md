@@ -69,11 +69,18 @@ change.
   avoids that by looking up on paste; doing so in slk needs the composer
   to ask through the app layer and show the chip while typing, a much
   larger change.
-- slk drops the WebSocket echo of its own sends within `selfSendWindow`
-  (`internal/ui/selfsend.go`), and the optimistic row shows the returned
-  mrkdwn. That window is now 6s, so a delayed send's echo is still
-  dropped, and the returned mrkdwn carries `<url|title>`, so the sender
-  sees the title too.
+- slk drops the WebSocket echo of its own sends (`internal/ui/selfsend.go`),
+  and the optimistic row shows the returned mrkdwn. A send now keeps its
+  channel's self-user echoes suppressed until its answer lands
+  (`BeginSend` / `EndSend`, at most `selfSendPendingLimit`), not just for
+  `selfSendWindow` (3s, unchanged), so a delayed send's echo is still
+  dropped while the user's messages from another client show as soon as
+  it has answered. The returned mrkdwn carries `<url|title>`, so the
+  sender sees the title too.
+- A title with `*`, `_`, `~` or backticks is formatted in slk's rows, the
+  sender's and (through #375) every reader's: slk applies mrkdwn
+  formatting inside link labels, for every labelled link. Slack mrkdwn
+  has no escape for those characters; the fix belongs in the renderer.
 - A `<url>` written literally inside a code span is rewritten in the
   mrkdwn fallback if the same URL is also a chip. Only the fallback is
   affected; the blocks are exact.

@@ -154,8 +154,9 @@ func TestChipCandidates_Capped(t *testing.T) {
 
 func TestChipMrkdwn(t *testing.T) {
 	chips := map[string]linkChip{chipURL: {URL: chipURL, Title: "A & <B>"}}
-	got := chipMrkdwn("see <"+chipURL+"> and <"+chipURL+"|mine>", chips)
-	want := "see <" + chipURL + "|A &amp; &lt;B&gt;> and <" + chipURL + "|mine>"
+	got := chipMrkdwn("see <"+chipURL+">, <"+chipURL+"|"+chipURL+"> and <"+chipURL+"|mine>", chips)
+	titled := "<" + chipURL + "|A &amp; &lt;B&gt;>"
+	want := "see " + titled + ", " + titled + " and <" + chipURL + "|mine>"
 	if got != want {
 		t.Errorf("chipMrkdwn =\n  %q\nwant\n  %q", got, want)
 	}
@@ -395,6 +396,25 @@ func TestSendMessage_SendsAChipWhenTheAppPublishesAWorkObject(t *testing.T) {
 	}
 	if post.Get("unfurl") != `[{"url":"`+chipURL+`"}]` || post.Get("_x_reason") != "webapp_message_send" || post.Get("token") != "xoxc-test" {
 		t.Errorf("post form = %v", post)
+	}
+}
+
+// A link the user labelled with its own URL becomes a chip too, and the
+// sender's row shows the title for it.
+func TestSendMessage_URLLabelledWithItselfShowsTheTitle(t *testing.T) {
+	for _, text := range []string{"[" + chipURL + "](" + chipURL + ")", "<" + chipURL + "|" + chipURL + ">"} {
+		c, s := newChipServer(t, pendingReply, true)
+		_, mr, err := c.SendMessage(context.Background(), "C1", text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := "<" + chipURL + "|" + chipTitle + ">"; mr != want {
+			t.Errorf("%s: sent mrkdwn = %q, want %q", text, mr, want)
+		}
+		reqs := s.recorded()
+		if !strings.Contains(reqs[len(reqs)-1].form.Get("blocks"), "attachment_mention") {
+			t.Errorf("%s: no chip sent", text)
+		}
 	}
 }
 
