@@ -12,7 +12,6 @@ import (
 	"github.com/gammons/slk/internal/core"
 	slkemoji "github.com/gammons/slk/internal/emoji"
 	imgpkg "github.com/gammons/slk/internal/image"
-	"github.com/gammons/slk/internal/text"
 	"github.com/gammons/slk/internal/ui/messages"
 	"github.com/gammons/slk/internal/ui/overlay"
 )
@@ -26,7 +25,7 @@ type ReactionResult struct {
 // Model is the reaction picker overlay.
 type Model struct {
 	allEmoji          []core.EmojiEntry
-	frecent           []core.EmojiEntry
+	frecency          slkemoji.Frecency
 	filtered          []core.EmojiEntry
 	query             string
 	selected          int
@@ -118,7 +117,7 @@ func (m *Model) SetCustomEmoji(customs map[string]string) {
 		})
 	}
 	// Re-run the active filter so visible results reflect the new list.
-	if m.visible && m.query != "" {
+	if m.visible {
 		m.filter()
 	}
 }
@@ -129,9 +128,8 @@ func (m *Model) Open(channelID, messageTS string, existingReactions []string) {
 	m.messageTS = messageTS
 	m.existingReactions = existingReactions
 	m.query = ""
-	m.selected = 0
-	m.filtered = nil
 	m.visible = true
+	m.filter()
 }
 
 // Close hides the picker and resets state.
@@ -147,9 +145,18 @@ func (m *Model) IsVisible() bool {
 	return m.visible
 }
 
-// SetFrecentEmoji sets the frequently/recently used emoji list.
+// SetFrecentEmoji sets the user's frequently/recently used emoji, most
+// frecent first. They lead the list, both with no query and among the
+// matches for one; only their names are read.
 func (m *Model) SetFrecentEmoji(entries []core.EmojiEntry) {
-	m.frecent = entries
+	names := make([]string, len(entries))
+	for i, e := range entries {
+		names[i] = e.Name
+	}
+	m.frecency = slkemoji.NewFrecency(names)
+	if m.visible {
+		m.filter()
+	}
 }
 
 // ChannelID returns the target channel.
@@ -207,37 +214,24 @@ func (m *Model) ClickRow(termWidth, termHeight, localY int) bool {
 	return true
 }
 
-// displayedList returns the list currently shown (frecent or filtered).
+// displayedList returns the list currently shown.
 func (m *Model) displayedList() []core.EmojiEntry {
-	if m.query == "" {
-		return m.frecent
-	}
 	return m.filtered
 }
 
+// maxResults caps the list, with or without a query.
+const maxResults = 50
+
+// filter lists the emoji matching the query (every emoji when it is
+// empty), the user's frecent ones first: see slkemoji.Match.
 func (m *Model) filter() {
-	if m.query == "" {
-		m.filtered = nil
-		m.selected = 0
-		return
-	}
-
-	q := text.Fold(m.query)
-	m.filtered = m.filtered[:0]
-
-	var substringMatches []core.EmojiEntry
-	for _, e := range m.allEmoji {
-		name := text.Fold(e.Name)
-		if strings.HasPrefix(name, q) {
-			m.filtered = append(m.filtered, e)
-		} else if strings.Contains(name, q) {
-			substringMatches = append(substringMatches, e)
-		}
-		if len(m.filtered)+len(substringMatches) >= 50 {
-			break
-		}
-	}
-	m.filtered = append(m.filtered, substringMatches...)
+	m.filtered = slkemoji.Match(m.allEmoji, func(e core.EmojiEntry) string { return e.Name }, m.query,
+		slkemoji.MatchOptions{
+			Substring: true,
+			Limit:     maxResults,
+			Frecency:  m.frecency,
+			Customs:   m.emojiCtx.Customs,
+		})
 	m.selected = 0
 }
 
