@@ -21,11 +21,17 @@ type Frecency struct {
 // order. A repeated name keeps its first (better) rank. A skin-toned
 // name ("+1::skin-tone-4") also ranks its base emoji ("+1") unless the
 // base ranks better on its own: the pickers list base names only, so
-// that is the row a toned use can lift.
+// that is the row a toned use can lift. Only Slack's "::skin-tone-N"
+// form counts as toned, the form CanonicalSlackName records; a name
+// ending "_tone1" may be a custom emoji of its own.
 func NewFrecency(names []string) Frecency {
 	f := Frecency{rank: make(map[string]int, len(names))}
 	for i, n := range names {
-		for _, k := range []string{n, StripSkinTone(n)} {
+		keys := []string{n}
+		if j := strings.Index(n, "::skin-tone-"); j > 0 {
+			keys = append(keys, n[:j])
+		}
+		for _, k := range keys {
 			if _, dup := f.rank[k]; !dup && k != "" {
 				f.rank[k] = i
 			}

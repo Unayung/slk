@@ -171,3 +171,12 @@ func TestSkinTonedUseRanksTheBaseEmoji(t *testing.T) {
 		t.Errorf(`Rank("+1") = %d, want 0`, r)
 	}
 }
+
+func TestUsedCustomNamedLikeAToneKeepsItsRow(t *testing.T) {
+	// "wave_tone1" here is a workspace custom emoji, not a toned wave.
+	use := NewFrecency([]string{"wave_tone1"})
+	got := names(Match(entries("wave", "wave_tone1"), entryName, "wave", MatchOptions{Frecency: use}))
+	if want := []string{"wave_tone1", "wave"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Match = %v, want %v", got, want)
+	}
+}
