@@ -144,11 +144,30 @@ func TestUsedInText(t *testing.T) {
 		{"nice :+1::skin-tone-2:", []string{"+1::skin-tone-2"}},
 		{"nice :thumbsup_tone3:", []string{"+1::skin-tone-4"}},
 		{"meet at 12:30:45 :partyparrot:", []string{"partyparrot"}},
+		// A rejected ":30:" must not swallow the colon that opens :+1:.
+		{"12:30:+1::skin-tone-5:", []string{"+1::skin-tone-5"}},
+		{"at 9:00:tada:", []string{"tada"}},
 		{":not_an_emoji_name: plain", nil},
 		{"", nil},
 	} {
 		if got := UsedInText(tc.in, customs); !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("UsedInText(%q) = %v, want %v", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestSkinTonedUseRanksTheBaseEmoji(t *testing.T) {
+	// The pickers list base names only; a toned use lifts that row.
+	use := NewFrecency([]string{"wave", "+1::skin-tone-4"})
+	if r, ok := use.Rank("+1", nil); !ok || r != 1 {
+		t.Errorf(`Rank("+1") = %d, %v; want 1, true`, r, ok)
+	}
+	got := names(Match(BuildEntries(nil), entryName, "", MatchOptions{Frecency: use, Limit: 2}))
+	if want := []string{"wave", "+1"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Match = %v, want %v", got, want)
+	}
+	// A base used on its own keeps its better rank.
+	if r, _ := NewFrecency([]string{"+1", "wave", "+1::skin-tone-4"}).Rank("+1", nil); r != 0 {
+		t.Errorf(`Rank("+1") = %d, want 0`, r)
 	}
 }

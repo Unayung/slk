@@ -18,12 +18,17 @@ type Frecency struct {
 }
 
 // NewFrecency builds a Frecency from names in most-to-least frecent
-// order. A repeated name keeps its first (better) rank.
+// order. A repeated name keeps its first (better) rank. A skin-toned
+// name ("+1::skin-tone-4") also ranks its base emoji ("+1") unless the
+// base ranks better on its own: the pickers list base names only, so
+// that is the row a toned use can lift.
 func NewFrecency(names []string) Frecency {
 	f := Frecency{rank: make(map[string]int, len(names))}
 	for i, n := range names {
-		if _, dup := f.rank[n]; !dup && n != "" {
-			f.rank[n] = i
+		for _, k := range []string{n, StripSkinTone(n)} {
+			if _, dup := f.rank[k]; !dup && k != "" {
+				f.rank[k] = i
+			}
 		}
 	}
 	return f
@@ -148,12 +153,21 @@ var usedShortcodeRe = regexp.MustCompile(`:([A-Za-z0-9_+\-]+(?:::skin-tone-[1-6]
 func UsedInText(s string, customs map[string]string) []string {
 	var out []string
 	seen := map[string]bool{}
-	for _, m := range usedShortcodeRe.FindAllStringSubmatch(s, -1) {
-		name := m[1]
+	for i := 0; i < len(s); {
+		m := usedShortcodeRe.FindStringSubmatchIndex(s[i:])
+		if m == nil {
+			break
+		}
+		end := i + m[1]
+		name := s[i+m[2] : i+m[3]]
 		_, custom := customs[name]
 		if _, builtin := slackCodeMap[":"+StripSkinTone(name)+":"]; !custom && !builtin {
+			// Not an emoji: its closing colon may open the next one,
+			// as in "12:30:+1::skin-tone-5:".
+			i = end - 1
 			continue
 		}
+		i = end
 		name = CanonicalSlackName(name, customs)
 		if !seen[name] {
 			seen[name] = true

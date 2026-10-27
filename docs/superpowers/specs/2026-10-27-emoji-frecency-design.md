@@ -38,9 +38,10 @@ by one function, `emoji.Match`:
 
 A used emoji counts under any alias or skin-tone spelling (recorded as
 `+1`, it leads the matches for `thumbs` as `thumbsup`) and is listed once
-even when several of its aliases match. Only emoji in the current
-workspace's list are offered, so a custom emoji used in another
-workspace does not appear.
+even when several of its aliases match. The pickers list base names
+only, so a skin-toned use (`+1::skin-tone-4`) ranks the base emoji.
+Only emoji in the current workspace's list are offered, so a custom
+emoji used in another workspace does not appear.
 
 With an empty query the picker shows the history first and then
 everything else alphabetically (capped at 50 rows, scrollable), instead
