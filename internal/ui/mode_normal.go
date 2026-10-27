@@ -11,7 +11,7 @@
 //     (handleWindowChord)
 //   - after g (Top): a second g jumps to the top; esc cancels; any
 //     other key cancels the chord and is then handled normally
-//   - after m (MarkSet) / ' (JumpMark): the key names the mark to set
+//   - after m (MarkSet) / '/` (JumpMark): the key names the mark to set
 //     or jump to (handleMarkChord / handleJumpChord)
 //   - reaction nav, while the focused content pane has it active
 //     (entered with R, ReactionNav): handleReactionNav takes every

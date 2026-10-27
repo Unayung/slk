@@ -13,6 +13,8 @@
 //     first, else cancel the edit.
 //   - Esc otherwise              -> close any open compose picker
 //     first, else exit insert mode.
+//   - App Ctrl hotkey with stay_in_insert_after_send on and an empty
+//     composer -> exit insert mode and run it as in normal mode.
 //   - Ctrl+V                     -> smartPaste (clipboard image /
 //     file path / verbatim text).
 //   - Ctrl+U                     -> clear compose (text +
