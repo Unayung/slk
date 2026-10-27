@@ -231,19 +231,24 @@ func (m *Model) filter() {
 	q := text.Fold(m.query)
 	m.filtered = m.filtered[:0]
 
+	// Cap the two tiers separately: allEmoji is alphabetical, so a
+	// shared cap let early substring matches fill the budget before a
+	// late-alphabet prefix match was reached (#193). Only a full prefix
+	// tier ends the scan early.
 	var substringMatches []core.EmojiEntry
 	for _, e := range m.allEmoji {
 		name := text.Fold(e.Name)
 		if strings.HasPrefix(name, q) {
 			m.filtered = append(m.filtered, e)
-		} else if strings.Contains(name, q) {
+			if len(m.filtered) == 50 {
+				break
+			}
+		} else if len(substringMatches) < 50 && strings.Contains(name, q) {
 			substringMatches = append(substringMatches, e)
-		}
-		if len(m.filtered)+len(substringMatches) >= 50 {
-			break
 		}
 	}
 	m.filtered = append(m.filtered, substringMatches...)
+	m.filtered = m.filtered[:min(len(m.filtered), 50)]
 	m.selected = 0
 }
 

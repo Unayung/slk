@@ -428,36 +428,13 @@ func TestReactionPickerModeKeys(t *testing.T) {
 				if got := modalRows(a.reactionPicker); got != 10 {
 					t.Errorf("rows = %d, want the full 10-row window after filtering", got)
 				}
-				// BUG?: reactionpicker.filter (reactionpicker/model.go:242-265)
-				// means to rank prefix matches ahead of substring ones,
-				// but it breaks out of the scan at 50 accumulated
-				// candidates and allEmoji is sorted alphabetically, so
-				// for a late-alphabet query the substring matches from
-				// "a..." exhaust the budget before any "t..." prefix
-				// match is even visited. The tier-0-first ordering is
-				// therefore unreachable for such queries.
-				//
-				// Both halves of this assertion are the pin. Contains
-				// records that the query filters at all; the NEGATIVE
-				// HasPrefix records the bug — fix the 50-cap and row 0
-				// becomes a "t..." prefix match, and this row fails and
-				// says so. A Contains-only assertion would survive the
-				// fix silently, which is the one thing a BUG?: marker
-				// must not do.
-				//
-				// Filed as https://github.com/gammons/slk/issues/193.
-				// WHEN THAT BUG IS FIXED: row 0 becomes a "t..." prefix
-				// match, the HasPrefix half fires with the message
-				// below, and this row should be re-pinned to REQUIRE
-				// HasPrefix rather than forbid it.
+				// filter ranks prefix matches ahead of substring ones,
+				// and caps the two tiers separately, so a late-alphabet
+				// query still puts a "t..." name on row 0 rather than
+				// early-alphabet names that merely contain a "t" (#193).
 				saveCommitted(t, a, &calls, func(name string) {
-					if !strings.Contains(name, "t") {
-						t.Errorf("committed %q, want a name matching the query \"t\"", name)
-					}
-					if strings.HasPrefix(name, "t") {
-						t.Errorf("committed %q, a prefix match: the 50-candidate cap in "+
-							"reactionpicker.filter appears to be fixed, so tier-0-first "+
-							"ranking now works. Re-characterize this row (and drop the BUG?).", name)
+					if !strings.HasPrefix(name, "t") {
+						t.Errorf("committed %q, want a prefix match for the query \"t\" on row 0", name)
 					}
 				})
 			},

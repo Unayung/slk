@@ -299,3 +299,29 @@ func TestPicker_View_ImageMode_UsesPlacement(t *testing.T) {
 		t.Errorf("picker View does not contain kitty placeholder runes\noutput=%q", out)
 	}
 }
+
+// TestFilterCapsTiersSeparately: substring matches that sort first must
+// not use up the 50-candidate budget before later prefix matches are
+// reached (#193), and the combined list is still capped at 50.
+func TestFilterCapsTiersSeparately(t *testing.T) {
+	customs := map[string]string{}
+	for i := 0; i < 60; i++ {
+		customs[fmt.Sprintf("a_zzq_%02d", i)] = "https://e.example/x.png" // substring, sorts first
+	}
+	for i := 0; i < 3; i++ {
+		customs[fmt.Sprintf("zzq_%02d", i)] = "https://e.example/x.png" // prefix, sorts last
+	}
+	m := New()
+	m.SetCustomEmoji(customs)
+	m.query = "zzq"
+	m.filter()
+
+	if len(m.filtered) != 50 {
+		t.Fatalf("len(filtered) = %d, want 50", len(m.filtered))
+	}
+	for i := 0; i < 3; i++ {
+		if !strings.HasPrefix(m.filtered[i].Name, "zzq") {
+			t.Errorf("filtered[%d] = %q, want a prefix match", i, m.filtered[i].Name)
+		}
+	}
+}
