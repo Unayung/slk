@@ -15,13 +15,12 @@ import (
 // TestClickRowScrolledWindow checks that BoxSize and ClickRow follow the
 // scroll window once the selection is past the row cap.
 func TestClickRowScrolledWindow(t *testing.T) {
-	entries := make([]core.EmojiEntry, maxVisibleRows+3)
-	for i := range entries {
-		entries[i] = core.EmojiEntry{Name: fmt.Sprintf("emoji%02d", i)}
+	names := make([]string, maxVisibleRows+3)
+	for i := range names {
+		names[i] = fmt.Sprintf("emoji%02d", i)
 	}
-	m := New()
+	m := withEmoji(names...)
 	m.Open("C1", "1.2", nil)
-	m.SetFrecentEmoji(entries)
 	for range maxVisibleRows + 2 {
 		m.HandleKey("down")
 	}
@@ -39,7 +38,7 @@ func TestClickRowScrolledWindow(t *testing.T) {
 	if m.selected != start {
 		t.Errorf("selected = %d, want the window's first row %d", m.selected, start)
 	}
-	want := entries[start].Name
+	want := names[start]
 	marked := false
 	for _, line := range strings.Split(ansi.Strip(m.renderBox(80)), "\n") {
 		if strings.Contains(line, "▌") && strings.Contains(line, want) {
@@ -52,9 +51,8 @@ func TestClickRowScrolledWindow(t *testing.T) {
 }
 
 func TestBoxSizeMatchesRender(t *testing.T) {
-	m := New()
+	m := withEmoji("a", "b", "c", "d")
 	m.Open("C1", "1.2", nil)
-	m.SetFrecentEmoji([]core.EmojiEntry{{Name: "a"}, {Name: "b"}, {Name: "c"}, {Name: "d"}})
 
 	w, h := m.BoxSize(80, 24)
 	box := m.renderBox(80)
@@ -67,9 +65,8 @@ func TestBoxSizeMatchesRender(t *testing.T) {
 }
 
 func TestClickRowSelectsItem(t *testing.T) {
-	m := New()
+	m := withEmoji("a", "b", "c", "d")
 	m.Open("C1", "1.2", nil)
-	m.SetFrecentEmoji([]core.EmojiEntry{{Name: "a"}, {Name: "b"}, {Name: "c"}, {Name: "d"}})
 
 	if !m.ClickRow(80, 24, listTopOffset()+2) {
 		t.Fatal("ClickRow on a populated row should return true")
@@ -83,4 +80,15 @@ func TestClickRowSelectsItem(t *testing.T) {
 	if m.ClickRow(80, 24, listTopOffset()+4) {
 		t.Error("ClickRow past the last row should return false")
 	}
+}
+
+// withEmoji returns a picker whose whole emoji list is names, so that
+// with no query and no history it shows exactly those rows.
+func withEmoji(names ...string) *Model {
+	m := New()
+	m.allEmoji = make([]core.EmojiEntry, len(names))
+	for i, n := range names {
+		m.allEmoji[i] = core.EmojiEntry{Name: n}
+	}
+	return m
 }
