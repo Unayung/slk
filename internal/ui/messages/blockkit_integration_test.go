@@ -2,12 +2,16 @@ package messages
 
 import (
 	"encoding/json"
+	goimage "image"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/slack-go/slack"
 
+	emojiutil "github.com/gammons/slk/internal/emoji"
+	imgpkg "github.com/gammons/slk/internal/image"
 	"github.com/gammons/slk/internal/ui/messages/blockkit"
 )
 
@@ -457,5 +461,43 @@ func TestMessageLinks_AttachmentMentionTitleUnescaped(t *testing.T) {
 	}
 	if got := renderedFor(t, msg, 100); !strings.Contains(got, "A -> B & <C>") {
 		t.Errorf("rendered body should show the decoded title; got:\n%s", got)
+	}
+}
+
+// A custom emoji inside Block Kit text must hand its kitty upload to
+// the entry's flushes, or its placeholder never resolves (#384).
+func TestRenderMessageBlockKitEmojiFlushes(t *testing.T) {
+	emojiutil.SetImageMode(true, 2)
+	t.Cleanup(func() { emojiutil.SetImageMode(false, 2) })
+
+	const url = "https://emoji.example/partyparrot.png"
+	flushed := false
+	ff := newFakePlaceFetcher()
+	ff.setPrerendered(emojiutil.EmojiCacheKey(url), goimage.Pt(2, 1), imgpkg.Render{
+		Cells:   goimage.Pt(2, 1),
+		Lines:   []string{"\U0010EEEE\U0010EEEE"},
+		OnFlush: func(io.Writer) error { flushed = true; return nil },
+	})
+	msg := MessageItem{
+		TS:        "1700000000.000000",
+		UserName:  "github",
+		UserID:    "U-BOT",
+		Text:      "PR opened",
+		Timestamp: "1:23 PM",
+		Blocks:    []blockkit.Block{blockkit.SectionBlock{Text: "merged :partyparrot:"}},
+	}
+	m := New([]MessageItem{msg}, "general")
+	m.SetEmojiContext(EmojiContext{
+		PlaceCtx: emojiutil.PlaceContext{Fetcher: ff},
+		Cells:    2,
+		Customs:  map[string]string{"partyparrot": url},
+	})
+
+	r := RenderMessage(msg, 80, m.renderContext(), RenderOptions{})
+	for _, f := range r.BlockFlushes {
+		_ = f(io.Discard)
+	}
+	if !flushed {
+		t.Errorf("block-kit emoji's OnFlush never reached (%d block flushes): its image is never uploaded", len(r.BlockFlushes))
 	}
 }
